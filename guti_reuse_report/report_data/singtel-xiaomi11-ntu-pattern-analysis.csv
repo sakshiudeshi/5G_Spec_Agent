@@ -1,0 +1,107 @@
+# per-bit static/random/skewed analysis (n=126 ng-5G-S-TMSI-Part1 values)
+bit_position,field,bit_in_field,ones,total,percent_ones,classification,toggle_count,toggle_rate_pct,counter_pattern_hint
+0,ng-5G-S-TMSI-Part1,0,126,126,100.0,static (1),0,0.0,
+1,ng-5G-S-TMSI-Part1,1,0,126,0.0,static (0),0,0.0,
+2,ng-5G-S-TMSI-Part1,2,0,126,0.0,static (0),0,0.0,
+3,ng-5G-S-TMSI-Part1,3,126,126,100.0,static (1),0,0.0,
+4,ng-5G-S-TMSI-Part1,4,126,126,100.0,static (1),0,0.0,
+5,ng-5G-S-TMSI-Part1,5,126,126,100.0,static (1),0,0.0,
+6,ng-5G-S-TMSI-Part1,6,0,126,0.0,static (0),0,0.0,
+7,ng-5G-S-TMSI-Part1,7,126,126,100.0,static (1),0,0.0,
+8,ng-5G-S-TMSI-Part1,8,126,126,100.0,static (1),0,0.0,
+9,ng-5G-S-TMSI-Part1,9,0,126,0.0,static (0),0,0.0,
+10,ng-5G-S-TMSI-Part1,10,0,126,0.0,static (0),0,0.0,
+11,ng-5G-S-TMSI-Part1,11,126,126,100.0,static (1),0,0.0,
+12,ng-5G-S-TMSI-Part1,12,0,126,0.0,static (0),0,0.0,
+13,ng-5G-S-TMSI-Part1,13,16,126,12.7,skewed,1,0.8,
+14,ng-5G-S-TMSI-Part1,14,90,126,71.43,skewed,2,1.6,possible counter bit (~2x toggle rate of previous bit)
+15,ng-5G-S-TMSI-Part1,15,63,126,50.0,random,3,2.4,
+16,ng-5G-S-TMSI-Part1,16,66,126,52.38,random,6,4.8,possible counter bit (~2x toggle rate of previous bit)
+17,ng-5G-S-TMSI-Part1,17,79,126,62.7,skewed,11,8.8,possible counter bit (~2x toggle rate of previous bit)
+18,ng-5G-S-TMSI-Part1,18,68,126,53.97,random,18,14.4,possible counter bit (~2x toggle rate of previous bit)
+19,ng-5G-S-TMSI-Part1,19,73,126,57.94,random,20,16.0,
+20,ng-5G-S-TMSI-Part1,20,69,126,54.76,random,37,29.6,possible counter bit (~2x toggle rate of previous bit)
+21,ng-5G-S-TMSI-Part1,21,73,126,57.94,random,59,47.2,possible counter bit (~2x toggle rate of previous bit)
+22,ng-5G-S-TMSI-Part1,22,65,126,51.59,random,71,56.8,
+23,ng-5G-S-TMSI-Part1,23,126,126,100.0,static (1),0,0.0,
+24,ng-5G-S-TMSI-Part1,24,0,126,0.0,static (0),0,0.0,
+25,ng-5G-S-TMSI-Part1,25,0,126,0.0,static (0),0,0.0,
+26,ng-5G-S-TMSI-Part1,26,0,126,0.0,static (0),0,0.0,
+27,ng-5G-S-TMSI-Part1,27,126,126,100.0,static (1),0,0.0,
+28,ng-5G-S-TMSI-Part1,28,126,126,100.0,static (1),0,0.0,
+29,ng-5G-S-TMSI-Part1,29,126,126,100.0,static (1),0,0.0,
+30,ng-5G-S-TMSI-Part1,30,0,126,0.0,static (0),0,0.0,
+31,ng-5G-S-TMSI-Part1,31,73,126,57.94,random,33,26.4,
+32,ng-5G-S-TMSI-Part1,32,0,126,0.0,static (0),0,0.0,
+33,ng-5G-S-TMSI-Part1,33,59,126,46.83,random,39,31.2,
+34,ng-5G-S-TMSI-Part1,34,72,126,57.14,random,44,35.2,
+35,ng-5G-S-TMSI-Part1,35,61,126,48.41,random,46,36.8,
+36,ng-5G-S-TMSI-Part1,36,74,126,58.73,random,45,36.0,
+37,ng-5G-S-TMSI-Part1,37,57,126,45.24,random,49,39.2,
+38,ng-5G-S-TMSI-Part1,38,69,126,54.76,random,48,38.4,
+
+# Compact bit pattern ('0'/'1' = static value, 'S' = skewed, 'X' = random),
+# grouped by field: ng-5G-S-TMSI-Part1
+1001110110010SSXXSXXXXX10001110X0XXXXXX
+
+# FREQUENCY ANALYSIS: cyclic/binary-counter pattern detection
+# (toggle_rate_pct = how often each bit flips between time-consecutive
+#  messages; a binary counter shows a ~halving toggle rate from the LSB
+#  upward, e.g. 100%, 50%, 25%, 12.5%, ...)
+# candidate counter region: bit_position 13-14 (ng-5G-S-TMSI-Part1, bit_in_field 13-14) toggle rates: 0.8%, 1.6%
+# candidate counter region: bit_position 15-18 (ng-5G-S-TMSI-Part1, bit_in_field 15-18) toggle rates: 2.4%, 4.8%, 8.8%, 14.4%
+# candidate counter region: bit_position 19-21 (ng-5G-S-TMSI-Part1, bit_in_field 19-21) toggle rates: 16%, 29.6%, 47.2%
+
+# PACKET DIAGRAM: payload bit pattern
+# (0/1 = static value, R = random/skewed, C_x = counter bit,
+#  x = bit significance counted continuously from the overall LSB
+#  (LSB = C_0) across all counter regions)
+```d2
+TMSI: {
+  grid-rows: 1
+  grid-gap: 0
+  style.fill: transparent
+  style.stroke: transparent
+  msb: "MSB ←" { shape: text; style.font-size: 22; style.bold: true }
+  b0: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b1: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b2: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b3: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b4: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b5: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b6: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b7: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b8: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b9: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b10: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b11: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b12: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b13: "C₈" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b14: "C₇" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b15: "C₆" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b16: "C₅" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b17: "C₄" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b18: "C₃" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b19: "C₂" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b20: "C₁" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b21: "C₀" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b22: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b23: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b24: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b25: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b26: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b27: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b28: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b29: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b30: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b31: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b32: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b33: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b34: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b35: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b36: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b37: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b38: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  lsb: "← LSB" { shape: text; style.font-size: 22; style.bold: true }
+}
+```

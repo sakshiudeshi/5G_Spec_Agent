@@ -1,0 +1,107 @@
+# per-bit static/random/skewed analysis (n=593 ng-5G-S-TMSI-Part1 values)
+bit_position,field,bit_in_field,ones,total,percent_ones,classification,toggle_count,toggle_rate_pct,counter_pattern_hint
+0,ng-5G-S-TMSI-Part1,0,593,593,100.0,static (1),0,0.0,
+1,ng-5G-S-TMSI-Part1,1,0,593,0.0,static (0),0,0.0,
+2,ng-5G-S-TMSI-Part1,2,593,593,100.0,static (1),0,0.0,
+3,ng-5G-S-TMSI-Part1,3,0,593,0.0,static (0),0,0.0,
+4,ng-5G-S-TMSI-Part1,4,593,593,100.0,static (1),0,0.0,
+5,ng-5G-S-TMSI-Part1,5,0,593,0.0,static (0),0,0.0,
+6,ng-5G-S-TMSI-Part1,6,593,593,100.0,static (1),0,0.0,
+7,ng-5G-S-TMSI-Part1,7,593,593,100.0,static (1),0,0.0,
+8,ng-5G-S-TMSI-Part1,8,593,593,100.0,static (1),0,0.0,
+9,ng-5G-S-TMSI-Part1,9,0,593,0.0,static (0),0,0.0,
+10,ng-5G-S-TMSI-Part1,10,0,593,0.0,static (0),0,0.0,
+11,ng-5G-S-TMSI-Part1,11,0,593,0.0,static (0),0,0.0,
+12,ng-5G-S-TMSI-Part1,12,0,593,0.0,static (0),0,0.0,
+13,ng-5G-S-TMSI-Part1,13,0,593,0.0,static (0),0,0.0,
+14,ng-5G-S-TMSI-Part1,14,0,593,0.0,static (0),0,0.0,
+15,ng-5G-S-TMSI-Part1,15,593,593,100.0,static (1),0,0.0,
+16,ng-5G-S-TMSI-Part1,16,0,593,0.0,static (0),0,0.0,
+17,ng-5G-S-TMSI-Part1,17,593,593,100.0,static (1),0,0.0,
+18,ng-5G-S-TMSI-Part1,18,211,593,35.58,skewed,3,0.51,
+19,ng-5G-S-TMSI-Part1,19,210,593,35.41,skewed,3,0.51,
+20,ng-5G-S-TMSI-Part1,20,342,593,57.67,random,6,1.01,possible counter bit (~2x toggle rate of previous bit)
+21,ng-5G-S-TMSI-Part1,21,222,593,37.44,skewed,9,1.52,
+22,ng-5G-S-TMSI-Part1,22,352,593,59.36,random,12,2.03,
+23,ng-5G-S-TMSI-Part1,23,362,593,61.05,skewed,7,1.18,possible counter bit (~half toggle rate of previous bit)
+24,ng-5G-S-TMSI-Part1,24,317,593,53.46,random,11,1.86,possible counter bit (~2x toggle rate of previous bit)
+25,ng-5G-S-TMSI-Part1,25,456,593,76.9,skewed,15,2.53,
+26,ng-5G-S-TMSI-Part1,26,383,593,64.59,skewed,19,3.21,
+27,ng-5G-S-TMSI-Part1,27,372,593,62.73,skewed,20,3.38,
+28,ng-5G-S-TMSI-Part1,28,364,593,61.38,skewed,20,3.38,
+29,ng-5G-S-TMSI-Part1,29,239,593,40.3,random,17,2.87,
+30,ng-5G-S-TMSI-Part1,30,105,593,17.71,skewed,18,3.04,
+31,ng-5G-S-TMSI-Part1,31,317,593,53.46,random,13,2.2,
+32,ng-5G-S-TMSI-Part1,32,277,593,46.71,random,16,2.7,
+33,ng-5G-S-TMSI-Part1,33,274,593,46.21,random,15,2.53,
+34,ng-5G-S-TMSI-Part1,34,544,593,91.74,skewed,19,3.21,
+35,ng-5G-S-TMSI-Part1,35,205,593,34.57,skewed,12,2.03,possible counter bit (~half toggle rate of previous bit)
+36,ng-5G-S-TMSI-Part1,36,315,593,53.12,random,16,2.7,
+37,ng-5G-S-TMSI-Part1,37,323,593,54.47,random,17,2.87,
+38,ng-5G-S-TMSI-Part1,38,338,593,57.0,random,20,3.38,
+
+# Compact bit pattern ('0'/'1' = static value, 'S' = skewed, 'X' = random),
+# grouped by field: ng-5G-S-TMSI-Part1
+101010111000000101SSXSXSXSSSSXSXXXSSXXX
+
+# FREQUENCY ANALYSIS: cyclic/binary-counter pattern detection
+# (toggle_rate_pct = how often each bit flips between time-consecutive
+#  messages; a binary counter shows a ~halving toggle rate from the LSB
+#  upward, e.g. 100%, 50%, 25%, 12.5%, ...)
+# candidate counter region: bit_position 19-20 (ng-5G-S-TMSI-Part1, bit_in_field 19-20) toggle rates: 0.51%, 1.01%
+# candidate counter region: bit_position 22-24 (ng-5G-S-TMSI-Part1, bit_in_field 22-24) toggle rates: 2.03%, 1.18%, 1.86%
+# candidate counter region: bit_position 34-35 (ng-5G-S-TMSI-Part1, bit_in_field 34-35) toggle rates: 3.21%, 2.03%
+
+# PACKET DIAGRAM: payload bit pattern
+# (0/1 = static value, R = random/skewed, C_x = counter bit,
+#  x = bit significance counted continuously from the overall LSB
+#  (LSB = C_0) across all counter regions)
+```d2
+TMSI: {
+  grid-rows: 1
+  grid-gap: 0
+  style.fill: transparent
+  style.stroke: transparent
+  msb: "MSB ←" { shape: text; style.font-size: 22; style.bold: true }
+  b0: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b1: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b2: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b3: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b4: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b5: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b6: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b7: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b8: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b9: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b10: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b11: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b12: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b13: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b14: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b15: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b16: "0" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b17: "1" { style.fill: "#e0e0e0"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b18: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b19: "C₆" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b20: "C₅" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b21: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b22: "C₄" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b23: "C₃" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b24: "C₂" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b25: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b26: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b27: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b28: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b29: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b30: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b31: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b32: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b33: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b34: "C₁" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b35: "C₀" { style.fill: "#fce5cd"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b36: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b37: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  b38: "R" { style.fill: "#cfe2f3"; style.font-size: 30; style.bold: true; style.stroke: "#000000"; style.stroke-width: 1 }
+  lsb: "← LSB" { shape: text; style.font-size: 22; style.bold: true }
+}
+```
