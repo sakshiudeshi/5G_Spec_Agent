@@ -1,0 +1,24 @@
+{
+  "id": "TMSI-UNPRED-01",
+  "nl_rule": "5G-TMSI generation should be following the best practices of unpredictable identifier generation.",
+  "spec_anchor": "3GPP TS 33.501 clause 6.12.3",
+  "matcher": {
+    "message_is": "rrc_setup_request",
+    "id_type": "tmsi"
+  },
+  "observe": {
+    "v": "ue_identity_tmsi"
+  },
+  "predicate": "distinct(v)",
+  "witness_pass": [
+    "000000000000000000000000000000000000001",
+    "110100101000111100101011001011110100010",
+    "001110100101101011110000110101001011101"
+  ],
+  "witness_violate": [
+    "110100101000111100101011001011110100010",
+    "001110100101101011110000110101001011101",
+    "110100101000111100101011001011110100010"
+  ],
+  "authored_by": "model:anthropic/claude-opus-5"
+}
