@@ -68,17 +68,17 @@ or predicate forms.
 """
 
 
-def load_spec() -> dict:
-    return json.loads(SPEC_PATH.read_text())
+def load_spec(path: Path = SPEC_PATH) -> dict:
+    return json.loads(Path(path).read_text())
 
 
 def spec_sha256(spec: dict) -> str:
     return hashlib.sha256("\n".join(spec["paragraphs"]).encode("utf-8")).hexdigest()
 
 
-def prompt_sections() -> list[tuple[str, str, bool]]:
+def prompt_sections(spec_path: Path = SPEC_PATH) -> list[tuple[str, str, bool]]:
     """(name, text, authored). Only `authored` sections are scanned by the leak test."""
-    spec = load_spec()
+    spec = load_spec(spec_path)
     clause = "## Specification text -- {}\n\n{}\n".format(
         spec["title"], "\n\n".join(spec["paragraphs"])
     )
@@ -90,12 +90,12 @@ def prompt_sections() -> list[tuple[str, str, bool]]:
     ]
 
 
-def build_prompt() -> str:
-    return "\n\n".join(text.strip() for _, text, _ in prompt_sections()) + "\n"
+def build_prompt(spec_path: Path = SPEC_PATH) -> str:
+    return "\n\n".join(text.strip() for _, text, _ in prompt_sections(spec_path)) + "\n"
 
 
-def authored_text() -> str:
-    return "\n\n".join(text for _, text, authored in prompt_sections() if authored)
+def authored_text(spec_path: Path = SPEC_PATH) -> str:
+    return "\n\n".join(text for _, text, authored in prompt_sections(spec_path) if authored)
 
 
 # offline validation
@@ -151,14 +151,14 @@ def extract_json_array(text: str) -> list:
     raise ValueError("no balanced JSON array in reply")
 
 
-def call_live(prompt: str) -> tuple[str, str]:
+def call_live(prompt: str, model: str | None = None) -> tuple[str, str]:
     """Returns (model, raw_reply)."""
     from openai import OpenAI
 
     load_env(HERE / ".env")
     load_env(HERE.parent / ".env")
     load_env(".env")
-    model = os.environ.get("SPECIFIER_MODEL", "anthropic/claude-opus-5")
+    model = model or os.environ.get("SPECIFIER_MODEL", "anthropic/claude-opus-5")
     client = OpenAI(
         api_key=os.environ["OPENROUTER_API_KEY"],
         base_url="https://openrouter.ai/api/v1",
