@@ -1,13 +1,4 @@
-"""Oracle + capture -> verdict, reason, evidence.
-
-Two error axes, deliberately different:
-
-  * the byte axis is total   -- an undecodable PDU becomes `inconclusive`, never a
-    false `violate`;
-  * the authoring axis is loud -- an invented `observe` primitive or `matcher` key
-    raises OracleError. Silently ignoring a misspelled matcher key would widen the
-    oracle to all traffic and make it fire on a compliant network.
-"""
+"""Oracle + capture -> verdict, reason, evidence."""
 
 from __future__ import annotations
 
@@ -18,7 +9,7 @@ from pathlib import Path
 
 from decode import ESTABLISHMENT_CAUSES, Record, load_capture
 
-# --- the three closed vocabularies -----------------------------------------
+# closed vocabularies
 
 MATCHER_KEYS: dict[str, frozenset[str]] = {
     "message_is": frozenset({"rrc_setup_request"}),
@@ -28,7 +19,7 @@ MATCHER_KEYS: dict[str, frozenset[str]] = {
 
 OBSERVE_PRIMITIVES = frozenset({"ue_identity_tmsi", "establishment_cause", "id_type"})
 
-# --- the three predicate forms, matched by regex, no parser ----------------
+# predicate forms
 
 _NAME = r"[A-Za-z_][A-Za-z0-9_]*"
 _PREDICATE_FORMS = (
@@ -160,16 +151,12 @@ def evaluate(oracle: dict, records: list[Record]) -> dict:
         "distinct": len(seen),
         "repeats": observed - len(seen),
     }
-    # `violate` is irrevocable: a break in a finite prefix decides the verdict, whatever
-    # follows it in the capture.
     if violation is not None:
         evidence["first_violation"] = violation
         return _verdict("violate", None, evidence)
     if undecodable is not None:
         evidence["undecodable_at_seq"] = undecodable
         return _verdict("inconclusive", "undecodable-pdu", evidence)
-    # One observation makes every relation trivially true; calling that `pass` would be
-    # agreement that was never tested.
     if observed < 2:
         return _verdict("inconclusive", f"under-observed:{observed}", evidence)
     return _verdict("pass", None, evidence)

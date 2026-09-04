@@ -11,8 +11,7 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-# TS 38.331 EstablishmentCause, ASN.1 order. The index into this tuple is the
-# on-the-wire encoding.
+# TS 38.331 EstablishmentCause, ASN.1 order.
 ESTABLISHMENT_CAUSES = (
     "emergency",
     "highPriorityAccess",
@@ -51,9 +50,6 @@ class Record:
 #   bits 4-42   the 39-bit identity
 #   bits 43-46  establishmentCause
 #   bit  47     spare
-#
-# Total on the byte axis: anything that is not a well-formed 6-octet
-# rrcSetupRequest yields all-None fields, never an exception.
 # --------------------------------------------------------------------------
 
 _UNDECODABLE = (None, None, None, None)
@@ -71,10 +67,7 @@ def decode_ul_ccch(pdu: bytes) -> tuple[str | None, str | None, str | None, str 
     return ("rrc_setup_request", id_type, tmsi, cause)
 
 
-# --------------------------------------------------------------------------
-# pcap adapter: classic little-endian pcap, linktype 101 (raw IP), carrying
-# Wireshark's RLC-NR UDP framing.
-# --------------------------------------------------------------------------
+# pcap adapter: little-endian pcap, linktype 101 (raw IP), RLC-NR UDP framing.
 
 _PCAP_MAGICS = {0xA1B2C3D4: 1_000_000, 0xA1B23C4D: 1_000_000_000}
 _RLC_NR_MAGIC = b"rlc-nr"
@@ -138,8 +131,6 @@ def read_pcap(path: str | Path) -> list[Record]:
         off += incl_len
         if len(frame) < incl_len:
             break  # truncated final record
-        # `seq` is the 1-based pcap frame number -- the number Wireshark shows, so evidence
-        # can be looked up in the capture directly.
         frame_no += 1
         payload = _udp_payload(frame)
         if payload is None:
@@ -154,10 +145,7 @@ def read_pcap(path: str | Path) -> list[Record]:
     return records
 
 
-# --------------------------------------------------------------------------
-# txt adapter: SCAT-style log. A line containing rrcSetupRequest(Up) is followed
-# by its "HEX: 0x..." line.
-# --------------------------------------------------------------------------
+# txt adapter: SCAT-style log; a rrcSetupRequest(Up) line is followed by its "HEX: 0x..." line.
 
 _TXT_MARKER = "rrcSetupRequest(Up)"
 
@@ -169,7 +157,7 @@ def _parse_clock(text: str) -> float:
 
 
 def read_txt(path: str | Path) -> list[Record]:
-    """`seq` is 1-based over rrcSetupRequest(Up) matches -- the log has no frame numbers."""
+    """`seq` is 1-based over rrcSetupRequest(Up) matches."""
     lines = Path(path).read_text(errors="replace").splitlines()
     records: list[Record] = []
     seq = 0

@@ -1,4 +1,4 @@
-"""Read ./.env into os.environ. No dependency on python-dotenv."""
+"""Read ./.env into os.environ."""
 
 from __future__ import annotations
 
