@@ -1,1 +1,5 @@
 *.ini
+.env
+fiveg_specifier/all_oracles/*
+__pycache__
+.gitkeep

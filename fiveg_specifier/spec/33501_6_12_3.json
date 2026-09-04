@@ -1,0 +1,19 @@
+{
+  "id": "33501-6.12.3",
+  "title": "6.12.3 Subscription temporary identifier",
+  "source_file": "guti_reuse_report/3gpp-ts-33.501.pdf",
+  "source_version": "3GPP TS 33.501 version 17.5.0 Release 17 (ETSI TS 133 501 V17.5.0, 2022-05), pages 104-105",
+  "sha256": "0b3c2124640ef1bc472496711f007d1ad72d8e28250d2c51eb77e217a6c9f864",
+  "paragraphs": [
+    "A new 5G-GUTI shall be sent to a UE only after a successful activation of NAS security. The 5G-GUTI is defined in TS 23.003 [19].",
+    "Upon receiving Registration Request message of type \"initial registration\" or \"mobility registration update\" from a UE, the AMF shall send a new 5G-GUTI to the UE in the registration procedure.",
+    "Upon receiving Registration Request message of type \"periodic registration update\" from a UE, the AMF should send a new 5G-GUTI to the UE in the registration procedure.",
+    "Upon receiving Service Request message sent by the UE in response to a Paging message, the AMF shall send a new 5G-GUTI to the UE. This new 5G-GUTI shall be sent before the current NAS signalling connection is released or the N1 NAS signalling connection is suspended.",
+    "Upon receiving an indication from the lower layers that the RRC connection has been resumed for a UE in 5GMM-IDLE mode with suspend indication in response to a Paging message, the AMF shall send a new 5G-GUTI to the UE. This new 5G-GUTI shall be sent before the current NAS signalling connection is released or the suspension of the N1 NAS signalling connection.",
+    "NOTE 1: It is left to implementation to re-assign 5G-GUTI more frequently than in cases mentioned above, for example after a Service Request message from the UE not triggered by the network.",
+    "NOTE 2: It is left to implementation to generate 5G-GUTI containing 5G-TMSI that uniquely identifies the UE within the AMF.",
+    "5G-TMSI generation should be following the best practices of unpredictable identifier generation.",
+    "A new I-RNTI shall be sent to a UE only after a successful activation of AS security.",
+    "On transition of UE to RRC INACTIVE state requested by gNB during RRC Resume procedure or RNAU procedure, the gNB shall assign a new I-RNTI to the UE."
+  ]
+}
