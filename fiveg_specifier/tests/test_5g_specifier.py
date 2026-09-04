@@ -135,11 +135,9 @@ def test_matcher_never_met(oracle, singtel):
     assert (result["verdict"], result["reason"]) == ("inconclusive", "matcher-never-met")
 
 
-BANNED = (
-    "paging",
+BANNED_EVERYWHERE = (
     "reuse",
     "repeat",
-    "distinct",
     "relink",
     "track",
     "guti reuse",
@@ -149,14 +147,23 @@ BANNED = (
     "non-compliance",
 )
 
+# `paging` is clause text and `distinct` is a predicate form, so both are prompt-legal.
+BANNED_IN_AUTHORED = BANNED_EVERYWHERE + ("paging", "distinct")
+
 
 def test_leak_token_list_not_weakened():
-    assert set(BANNED) <= set(specify.LEAK_TOKENS)
+    assert set(BANNED_IN_AUTHORED) <= set(specify.LEAK_TOKENS)
 
 
 def test_prompt_no_leak():
+    prompt = specify.build_prompt().lower()
+    leaked = [t for t in BANNED_EVERYWHERE if t in prompt]
+    assert leaked == [], f"rendered prompt leaks: {leaked}"
+
+
+def test_authored_prompt_no_leak():
     authored = specify.authored_text().lower()
-    leaked = [t for t in BANNED if t in authored]
+    leaked = [t for t in BANNED_IN_AUTHORED if t in authored]
     assert leaked == [], f"authored prompt region leaks: {leaked}"
 
 
