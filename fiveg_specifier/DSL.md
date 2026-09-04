@@ -66,3 +66,28 @@ Exactly three forms. `V` is a name bound in `observe`.
   - `under-observed:N` — fewer than two observations (N of them); with one value every
     relation is trivially true, so this is never reported as `pass`
   - `undecodable-pdu` — a matched record carried no value for an observed primitive
+
+## Leakage control
+
+Clause 6.12.3 obliges the AMF to *send* a new 5G-GUTI — downlink. The captures are uplink RRC
+only. The bridge from that obligation to something observable is the finding under test, so it
+must not appear in the prompt.
+
+`specify.py` splits the prompt in two:
+
+- **Verbatim** — the grammar above and the pinned clause paragraphs. These are the inputs. The
+  clause necessarily contains its own vocabulary; quoting it is not a hint.
+- **Authored** — the instrument datasheet and the task instructions. This is prose we write,
+  and it is where a hint would hide. `authored_text()` returns exactly this region.
+
+The datasheet gives the complete 16-value establishment-cause domain in ASN.1 order,
+unannotated. Describing what the instrument can see is not telling the model the answer;
+singling out one value would be.
+
+Three tests hold this: `test_prompt_no_leak` (no banned token in the authored region),
+`test_leak_token_list_not_weakened` (the banned list cannot be quietly shortened), and
+`test_prompt_keeps_the_whole_cause_domain` (all 16 values survive in the rendered prompt).
+
+A leak-free prompt may return `[]`, or an oracle with the wrong matcher. That is a
+measurement, not a failure, which is why every `--live` run is archived to `all_oracles/` and
+`oracle.json` is overwritten only under `--persist`.

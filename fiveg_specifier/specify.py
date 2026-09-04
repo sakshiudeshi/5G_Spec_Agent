@@ -1,24 +1,4 @@
-"""Prompt construction, offline validation, and the (never-executed) live LLM call.
-
-Leakage control
----------------
-Clause 6.12.3 obliges the AMF to *send* a new 5G-GUTI -- downlink. The captures are uplink
-RRC only. The bridge from that obligation to something observable is the finding under test,
-so it must not appear in the prompt.
-
-The split this module enforces:
-
-  * VERBATIM sections -- the grammar (DSL.md) and the pinned clause paragraphs. These are the
-    inputs. The clause necessarily contains its own vocabulary; quoting it is not a hint.
-  * AUTHORED sections -- the instrument datasheet and the task instructions. This is prose we
-    write, and it is where a hint would hide. `authored_text()` returns exactly this region,
-    and test_prompt_no_leak asserts it contains no token from LEAK_TOKENS.
-
-The datasheet gives the complete 16-value establishment-cause domain in ASN.1 order,
-unannotated. Describing what the instrument can see is not telling the model the answer;
-singling out one value would be. The test also asserts all 16 values survive in the rendered
-prompt, so the domain cannot be quietly narrowed to the answer.
-"""
+"""Prompt construction, offline validation, and the live LLM call."""
 
 from __future__ import annotations
 
@@ -41,9 +21,6 @@ SPEC_PATH = HERE / "spec" / "33501_6_12_3.json"
 ORACLE_PATH = HERE / "oracle.json"
 ALL_ORACLES = HERE / "all_oracles"
 
-# Tokens that would hand the model the finding. Scanned case-insensitively over the AUTHORED
-# region only. `mt-Access` is absent by design: the control is not that the value is unnamed
-# but that it is never singled out, which the all-16-present assertion enforces.
 LEAK_TOKENS = (
     "paging",
     "reuse",
@@ -121,7 +98,7 @@ def authored_text() -> str:
     return "\n\n".join(text for _, text, authored in prompt_sections() if authored)
 
 
-# --- offline: re-validate the checked-in oracle ----------------------------
+# offline validation
 
 
 def validate_file(path: Path) -> list[dict]:
@@ -146,7 +123,7 @@ def validate_file(path: Path) -> list[dict]:
     return report
 
 
-# --- live: OpenRouter ------------------------------------------------------
+# live: OpenRouter
 
 
 def extract_json_array(text: str) -> list:
@@ -175,13 +152,12 @@ def extract_json_array(text: str) -> list:
 
 
 def call_live(prompt: str) -> tuple[str, str]:
-    """Returns (model, raw_reply). Implemented; never executed by the test suite."""
+    """Returns (model, raw_reply)."""
     from openai import OpenAI
 
-    # First hit wins (load_env uses setdefault), and the real environment beats all three.
-    load_env(HERE / ".env")  # a script-local override, if anyone drops one there
-    load_env(HERE.parent / ".env")  # the repo root -- where the key actually lives
-    load_env(".env")  # ...and the invoking directory, wherever that is
+    load_env(HERE / ".env")
+    load_env(HERE.parent / ".env")
+    load_env(".env")
     model = os.environ.get("SPECIFIER_MODEL", "anthropic/claude-opus-5")
     client = OpenAI(
         api_key=os.environ["OPENROUTER_API_KEY"],
@@ -233,8 +209,6 @@ def run_live(persist: bool) -> dict:
     stamp = record["utc"].replace(":", "").replace("+0000", "Z")
     (ALL_ORACLES / f"{stamp}-{record['run_id']}.json").write_text(json.dumps(record, indent=2))
 
-    # An empty or wrong-matcher reply is a measurement, not a failure -- which is why every
-    # run is archived and oracle.json is never overwritten without being asked.
     if persist and accepted:
         ORACLE_PATH.write_text(json.dumps(accepted[0] if len(accepted) == 1 else accepted, indent=2))
     return record

@@ -41,20 +41,24 @@ def _causes(records):
     return counts
 
 
-# 1. pcap decode
 def test_pcap_decode(starhub):
     assert len(starhub) == 612
     assert _causes(starhub) == {"mo-Data": 352, "mt-Access": 205, "mo-Signalling": 36}
     assert sum(_causes(starhub).values()) == 593
 
 
-# 2. txt decode
 def test_txt_decode(singtel):
     assert _causes(singtel) == {"mt-Access": 93, "mo-Data": 32, "mo-Signalling": 1}
     assert sum(_causes(singtel).values()) == 126
 
 
-# 3. golden verdicts
+def test_cause_index_is_the_wire_encoding():
+    assert len(decode.ESTABLISHMENT_CAUSES) == 16
+    assert decode.ESTABLISHMENT_CAUSES.index("mt-Access") == 2
+    assert decode.ESTABLISHMENT_CAUSES.index("mo-Data") == 4
+    assert decode.ESTABLISHMENT_CAUSES[-1] == "spare1"
+
+
 def test_starhub_violates(oracle, starhub):
     result = run.evaluate(oracle, starhub)
     assert result["verdict"] == "violate"
@@ -73,7 +77,6 @@ def test_singtel_passes(oracle, singtel):
     assert result["evidence"]["distinct"] == 93
 
 
-# 4. the establishment_cause matcher key is load-bearing
 def test_matcher_key_is_load_bearing(oracle, singtel):
     widened = copy.deepcopy(oracle)
     del widened["matcher"]["establishment_cause"]
@@ -82,7 +85,6 @@ def test_matcher_key_is_load_bearing(oracle, singtel):
     assert result["evidence"]["matched"] == 126
 
 
-# 5. witness round-trip
 def test_witness_round_trip(oracle):
     verdicts = run.evaluate_witnesses(oracle)
     assert [(w["witness"], w["got"]) for w in verdicts] == [
@@ -91,7 +93,6 @@ def test_witness_round_trip(oracle):
     ]
 
 
-# 6. the authoring axis fails loudly
 @pytest.mark.parametrize(
     "mutate",
     [
@@ -109,7 +110,6 @@ def test_validator_rejects(oracle, mutate):
         run.evaluate(broken, [])
 
 
-# undecodable input is inconclusive, never a false violate
 def test_undecodable_is_inconclusive(oracle):
     truncated = decode.decode_ul_ccch(b"\x09\xd9\x1c")
     assert truncated == (None, None, None, None)
@@ -135,7 +135,6 @@ def test_matcher_never_met(oracle, singtel):
     assert (result["verdict"], result["reason"]) == ("inconclusive", "matcher-never-met")
 
 
-# 7. the prompt does not carry the answer
 BANNED = (
     "paging",
     "reuse",
@@ -173,10 +172,9 @@ def test_prompt_contains_the_clause_and_grammar():
     spec = specify.load_spec()
     for paragraph in spec["paragraphs"]:
         assert paragraph in prompt
-    assert "distinct(V)" in prompt  # the grammar, a verbatim section, may say it
+    assert "distinct(V)" in prompt
 
 
-# 8. the clause text cannot drift silently
 def test_spec_pinned():
     spec = specify.load_spec()
     assert specify.spec_sha256(spec) == spec["sha256"]
