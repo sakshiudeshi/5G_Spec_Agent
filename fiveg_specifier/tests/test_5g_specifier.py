@@ -14,10 +14,13 @@ DATA = ROOT / "guti_reuse_report" / "report_data"
 STARHUB = DATA / "starhub-xiaomi11-ntu-sutd.pcap"
 SINGTEL = DATA / "singtel-xiaomi11-ntu.txt"
 
+# The tests read golden_oracle.json
+GOLDEN_ORACLE = ROOT / "fiveg_specifier" / "golden_oracle.json"
+
 
 @pytest.fixture(scope="module")
 def oracle():
-    return json.loads((ROOT / "fiveg_specifier" / "oracle.json").read_text())
+    return json.loads(GOLDEN_ORACLE.read_text())
 
 
 @pytest.fixture(scope="module")
@@ -185,6 +188,6 @@ def test_extract_json_array():
 
 
 def test_offline_validation_report():
-    report = specify.validate_file(ROOT / "fiveg_specifier" / "oracle.json")
+    report = specify.validate_file(GOLDEN_ORACLE)
     assert report and all(r["ok"] for r in report)
     assert report[0]["authored_by"] == "human"

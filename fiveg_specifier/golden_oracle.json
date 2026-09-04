@@ -1,0 +1,22 @@
+{
+  "id": "NR-GUTI-01",
+  "nl_rule": "Upon receiving Service Request message sent by the UE in response to a Paging message, the AMF shall send a new 5G-GUTI to the UE.",
+  "spec_anchor": "3GPP TS 33.501 clause 6.12.3",
+  "authored_by": "human",
+  "matcher": {
+    "message_is": "rrc_setup_request",
+    "establishment_cause": "mt-Access"
+  },
+  "observe": {
+    "tmsi": "ue_identity_tmsi"
+  },
+  "predicate": "distinct(tmsi)",
+  "witness_pass": [
+    "101010111000000101111111010110011011111",
+    "100111011001000111001111000111010110100"
+  ],
+  "witness_violate": [
+    "101010111000000101111111010110011011111",
+    "101010111000000101111111010110011011111"
+  ]
+}
