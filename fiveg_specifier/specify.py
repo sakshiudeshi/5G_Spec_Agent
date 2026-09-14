@@ -66,6 +66,11 @@ produce. The predicate must not return `violate` on the first, and must not retu
 second. If it cannot tell the two apart, the grammar does not express that sentence and you must
 emit nothing for it.
 
+An obligation the sentence places on a party whose messages the instrument never sees may still
+be expressible. Do not stop at the fact that you cannot see the obliged action; ask what the
+records you can see must look like if the obligation was met, and what they would look like if it
+was not. If those two answers differ in an observation primitive, express that difference.
+
 Return a JSON array of oracle objects and nothing else. Return [] for any sentence you cannot
 express in this grammar -- including the case where that is every sentence.
 
