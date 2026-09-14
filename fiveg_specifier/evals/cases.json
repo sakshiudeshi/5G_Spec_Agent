@@ -1,0 +1,75 @@
+{
+  "note": "Eval cases. Every path is relative to fiveg_specifier/.",
+  "cases": [
+    {
+      "name": "guti-reuse-mt-access",
+      "spec": "spec/33501_6_12_3.json",
+      "note": "A paging-triggered reconnection must carry a new 5G-GUTI.",
+
+      "expect": {
+        "count": { "min": 1, "max": 1 },
+        "required": [
+          {
+            "name": "mt-access-guti-reuse",
+            "matcher_includes": {
+              "message_is": "rrc_setup_request",
+              "establishment_cause": "mt-Access"
+            },
+            "predicate_relation": "distinct",
+            "observes": "ue_identity_tmsi"
+          }
+        ],
+        "forbidden": [
+          {
+            "name": "unpredictability-as-distinctness",
+            "note": "No predicate form separates a counter from a random draw.",
+            "nl_rule_includes": "unpredictable identifier generation"
+          }
+        ]
+      },
+
+      "captures": [
+        {
+          "name": "starhub",
+          "file": "evals/data/starhub-xiaomi11-ntu-sutd.pcap",
+          "sha256": "0bd01276d33133a974ca9d00807db063f73fb26e62615c5ac069ac5f22f3ec8c",
+          "expect": "violate",
+          "note": "205 mt-Access, 21 distinct: the same TMSI returns after paging."
+        },
+        {
+          "name": "singtel",
+          "file": "evals/data/singtel-xiaomi11-ntu.txt",
+          "sha256": "3c09b7d55b7d697361b2219a634bac411b3ab869da6d11d269bc21c0a390418d",
+          "expect": "pass",
+          "note": "93 mt-Access, 93 distinct. Its mo-Data repeats are permitted by NOTE 1."
+        }
+      ],
+
+      "probes": [
+        {
+          "name": "sequential-counter",
+          "note": "A counter never repeats and is wholly predictable.",
+          "applies_when": "unpredictable identifier generation",
+          "primitive": "ue_identity_tmsi",
+          "forbidden": "pass",
+          "values": [
+            "000000000000000000000000000000000000001",
+            "000000000000000000000000000000000000010",
+            "000000000000000000000000000000000000011",
+            "000000000000000000000000000000000000100"
+          ]
+        }
+      ],
+
+      "candidates": [
+        { "oracle": "golden_oracle.json", "expect_failures": [] },
+        {
+          "oracle": "evals/candidates/TMSI-UNPRED-01.json",
+          "expect_failures": ["capture:singtel", "probe:sequential-counter"]
+        }
+      ],
+
+      "replays": ["evals/replays/2026-09-04-claude-opus-5.json"]
+    }
+  ]
+}

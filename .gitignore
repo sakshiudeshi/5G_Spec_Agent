@@ -4,3 +4,4 @@ fiveg_specifier/all_oracles/*
 __pycache__
 .gitkeep
 fiveg_specifier/__pycache__/*
+fiveg_specifier/evals/runs/*

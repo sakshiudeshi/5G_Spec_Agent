@@ -1,0 +1,80 @@
+{
+  "run_id": "581cd4f6-c550-475f-ae23-ffb01478bcb1",
+  "utc": "2026-09-04T04:09:21.112847+00:00",
+  "provider": "openrouter",
+  "model": "anthropic/claude-opus-5",
+  "prompt_sha256": "960fbcad0da577770471e91368bb645f11cd1c80adb5eed2da9387a3b75f9733",
+  "spec_anchor": "33501-6.12.3",
+  "raw_reply": "```json\n[\n  {\n    \"id\": \"TMSI-UNPRED-01\",\n    \"nl_rule\": \"5G-TMSI generation should be following the best practices of unpredictable identifier generation.\",\n    \"spec_anchor\": \"3GPP TS 33.501 clause 6.12.3\",\n    \"matcher\": { \"message_is\": \"rrc_setup_request\", \"id_type\": \"tmsi\" },\n    \"observe\": { \"v\": \"ue_identity_tmsi\" },\n    \"predicate\": \"distinct(v)\",\n    \"witness_pass\": [\n      \"000000000000000000000000000000000000001\",\n      \"110100101000111100101011001011110100010\",\n      \"001110100101101011110000110101001011101\"\n    ],\n    \"witness_violate\": [\n      \"110100101000111100101011001011110100010\",\n      \"001110100101101011110000110101001011101\",\n      \"110100101000111100101011001011110100010\"\n    ]\n  }\n]\n```",
+  "candidates": [
+    {
+      "id": "TMSI-UNPRED-01",
+      "nl_rule": "5G-TMSI generation should be following the best practices of unpredictable identifier generation.",
+      "spec_anchor": "3GPP TS 33.501 clause 6.12.3",
+      "matcher": {
+        "message_is": "rrc_setup_request",
+        "id_type": "tmsi"
+      },
+      "observe": {
+        "v": "ue_identity_tmsi"
+      },
+      "predicate": "distinct(v)",
+      "witness_pass": [
+        "000000000000000000000000000000000000001",
+        "110100101000111100101011001011110100010",
+        "001110100101101011110000110101001011101"
+      ],
+      "witness_violate": [
+        "110100101000111100101011001011110100010",
+        "001110100101101011110000110101001011101",
+        "110100101000111100101011001011110100010"
+      ]
+    }
+  ],
+  "validation": [
+    {
+      "id": "TMSI-UNPRED-01",
+      "ok": true,
+      "witness_verdicts": [
+        {
+          "witness": "witness_pass",
+          "expected": "pass",
+          "got": "pass",
+          "ok": true
+        },
+        {
+          "witness": "witness_violate",
+          "expected": "violate",
+          "got": "violate",
+          "ok": true
+        }
+      ]
+    }
+  ],
+  "accepted": [
+    {
+      "id": "TMSI-UNPRED-01",
+      "nl_rule": "5G-TMSI generation should be following the best practices of unpredictable identifier generation.",
+      "spec_anchor": "3GPP TS 33.501 clause 6.12.3",
+      "matcher": {
+        "message_is": "rrc_setup_request",
+        "id_type": "tmsi"
+      },
+      "observe": {
+        "v": "ue_identity_tmsi"
+      },
+      "predicate": "distinct(v)",
+      "witness_pass": [
+        "000000000000000000000000000000000000001",
+        "110100101000111100101011001011110100010",
+        "001110100101101011110000110101001011101"
+      ],
+      "witness_violate": [
+        "110100101000111100101011001011110100010",
+        "001110100101101011110000110101001011101",
+        "110100101000111100101011001011110100010"
+      ],
+      "authored_by": "model:anthropic/claude-opus-5"
+    }
+  ]
+}
