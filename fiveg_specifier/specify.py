@@ -60,6 +60,12 @@ Below are a grammar and a passage of specification text. Consider each normative
 the passage on its own. If the grammar can express that sentence as an oracle over the records
 the datasheet describes, emit one oracle object for it; if it cannot, emit nothing for it.
 
+Before you emit an oracle, test its predicate against two sequences of your own devising: one an
+implementation obeying the sentence could produce, one an implementation disobeying it could
+produce. The predicate must not return `violate` on the first, and must not return `pass` on the
+second. If it cannot tell the two apart, the grammar does not express that sentence and you must
+emit nothing for it.
+
 Return a JSON array of oracle objects and nothing else. Return [] for any sentence you cannot
 express in this grammar -- including the case where that is every sentence.
 
