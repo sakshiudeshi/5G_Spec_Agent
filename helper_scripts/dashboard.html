@@ -1,0 +1,387 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Specifier sweeps</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #fff; --ink: #1a1a18; --muted: #6b6b66;
+    --line: #e2e2dd; --accent: #2f6f4f;
+    --pass: #1f7a4d; --pass-bg: #e6f4ec;
+    --fail: #b3261e; --fail-bg: #fbeae9;
+    --abstain: #8a6d1f; --abstain-bg: #fbf3dc;
+    --empty: #6b6b66; --empty-bg: #ededea;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17181a; --panel: #1f2023; --ink: #e8e8e4; --muted: #9a9a94;
+      --line: #32343a; --accent: #6fbf95;
+      --pass: #6fbf95; --pass-bg: #18291f;
+      --fail: #e58a82; --fail-bg: #2d1c1b;
+      --abstain: #d6b45c; --abstain-bg: #2a2416;
+      --empty: #9a9a94; --empty-bg: #26272a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  #root { max-width: 1180px; margin: 0 auto; padding: 24px 20px 64px; }
+  h1 { font-size: 19px; margin: 0; letter-spacing: -0.01em; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.07em;
+       color: var(--muted); margin: 28px 0 10px; font-weight: 600; }
+  a { color: var(--accent); }
+  code, .mono { font-family: var(--mono); font-size: 12.5px; }
+
+  .topbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline;
+            justify-content: space-between; border-bottom: 1px solid var(--line);
+            padding-bottom: 14px; }
+  .meta { color: var(--muted); font-size: 12.5px; }
+  select { font: inherit; padding: 5px 8px; border: 1px solid var(--line);
+           border-radius: 6px; background: var(--panel); color: var(--ink); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+           gap: 10px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+          padding: 12px 14px; }
+  .tile .n { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+  .tile .k { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em;
+             color: var(--muted); margin-top: 2px; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--panel);
+          border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line);
+           vertical-align: middle; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em;
+       color: var(--muted); font-weight: 600; background: var(--bg); }
+  tr:last-child td { border-bottom: none; }
+  tbody tr.click { cursor: pointer; }
+  tbody tr.click:hover { background: var(--bg); }
+  tbody tr.on { background: var(--bg); box-shadow: inset 3px 0 0 var(--accent); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px;
+          font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em; }
+  .pass { color: var(--pass); background: var(--pass-bg); }
+  .fail { color: var(--fail); background: var(--fail-bg); }
+  .abstain { color: var(--abstain); background: var(--abstain-bg); }
+  .empty, .error { color: var(--empty); background: var(--empty-bg); }
+  .error { color: var(--fail); }
+  .dot { font-weight: 600; }
+  .dot.ok { color: var(--pass); } .dot.bad { color: var(--fail); }
+  .dot.skip { color: var(--muted); }
+
+  .bar { display: inline-block; vertical-align: middle; width: 78px; height: 7px;
+         border-radius: 4px; background: var(--empty-bg); overflow: hidden; margin-right: 8px; }
+  .bar > i { display: block; height: 100%; background: var(--pass); }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+          padding: 16px; margin-top: 10px; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 14px;
+        font-size: 12.5px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; font-family: var(--mono); overflow-wrap: anywhere; }
+  .rule { font-style: italic; color: var(--muted); margin: 0 0 12px;
+          border-left: 2px solid var(--line); padding-left: 10px; }
+  .oracle { border: 1px solid var(--line); border-radius: 8px; padding: 14px;
+            margin-top: 12px; }
+  .oracle h4 { margin: 0 0 8px; font-size: 14px; font-family: var(--mono); }
+  details { margin-top: 12px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+  pre { background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+        padding: 12px; overflow-x: auto; font-family: var(--mono); font-size: 12px;
+        margin: 8px 0 0; }
+  .note { color: var(--muted); font-size: 12.5px; }
+  .crumbs { font-size: 12.5px; color: var(--muted); margin: 18px 0 4px; }
+  .crumbs a { text-decoration: none; }
+  .crumbs a:hover { text-decoration: underline; }
+  .warn { background: var(--abstain-bg); color: var(--abstain); border-radius: 6px;
+          padding: 10px 12px; font-size: 13px; margin: 14px 0 0; }
+  .warn code { background: none; }
+  .oracle.dup { border-style: dashed; opacity: 0.88; }
+  .chip.dupchip { color: var(--abstain); background: var(--abstain-bg); margin-left: 10px;
+                  font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 600; }
+  .wrap { overflow-x: auto; }
+  @media (max-width: 620px) { .kv { grid-template-columns: 1fr; } }
+</style>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.4/babel.min.js"></script>
+<script>
+  // babel-standalone 7.26 defaults preset-react to the automatic runtime, which emits
+  // `import {jsx} from "react/jsx-runtime"` and dies inside a plain <script>. Pin classic
+  // so JSX compiles to React.createElement against the UMD global.
+  Babel.registerPreset("react-classic", {
+    presets: [[Babel.availablePresets["react"], { runtime: "classic" }]],
+  });
+</script>
+<script type="text/babel" data-presets="react-classic">
+const { useState, useEffect } = React;
+
+const STATUS = {
+  pass:    "found the rule, nothing extra",
+  fail:    "emitted oracles, but the run did not pass",
+  abstain: "returned [] - no oracle for any sentence",
+  empty:   "no content returned; a broken call, not an abstention",
+  error:   "the call itself raised",
+};
+
+const Chip = ({ s }) => <span className={"chip " + s} title={STATUS[s] || ""}>{s}</span>;
+
+const Mark = ({ s }) => (
+  <span className={"dot " + (s === "ok" ? "ok" : s === "skip" ? "skip" : "bad")}>{s}</span>
+);
+
+function Tiles({ cells }) {
+  return (
+    <div className="tiles">
+      {cells.map(([k, n, hint]) => (
+        <div className="tile" key={k} title={hint || ""}>
+          <div className="n">{n}</div><div className="k">{k}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Checks({ rows }) {
+  return (
+    <div className="wrap"><table>
+      <thead><tr><th>check</th><th>expected</th><th>got</th><th>status</th></tr></thead>
+      <tbody>{rows.map((c, i) => (
+        <tr key={i}>
+          <td className="mono">{c.case}</td><td className="mono">{c.expected}</td>
+          <td className="mono">{c.got}</td><td><Mark s={c.status} /></td>
+        </tr>
+      ))}</tbody>
+    </table></div>
+  );
+}
+
+function Oracle({ o }) {
+  const kv = [
+    ["matcher", o.matcher && JSON.stringify(o.matcher)],
+    ["observe", o.observe && JSON.stringify(o.observe)],
+    ["predicate", o.predicate],
+    ["witness_pass", o.witness_pass && o.witness_pass.join("  ")],
+    ["witness_violate", o.witness_violate && o.witness_violate.join("  ")],
+  ].filter(([, v]) => v);
+  return (
+    <div className={"oracle" + (o.duplicate_of ? " dup" : "")}>
+      <h4>
+        {o.id}
+        {o.duplicate_of &&
+          <span className="chip dupchip" title="same matcher, observe and predicate as an earlier oracle in this reply">
+            duplicate of {o.duplicate_of}
+          </span>}
+      </h4>
+      {o.nl_rule && <p className="rule">{o.nl_rule}</p>}
+      <dl className="kv">
+        {kv.map(([k, v]) => <React.Fragment key={k}><dt>{k}</dt><dd>{v}</dd></React.Fragment>)}
+      </dl>
+      <div style={{ marginTop: 12 }}><Checks rows={o.checks} /></div>
+      <details><summary>full JSON &mdash; {o.id}</summary>
+        <pre>{JSON.stringify(o.json || {}, null, 2)}</pre>
+      </details>
+    </div>
+  );
+}
+
+function RunDetail({ run, onBack, crumb }) {
+  return (
+    <>
+      <div className="crumbs">{crumb}</div>
+      <div className="card">
+        <dl className="kv">
+          <dt>model</dt><dd>{run.model} &middot; rep {run.rep}</dd>
+          <dt>status</dt><dd><Chip s={run.status} /> <span className="note">{STATUS[run.status]}</span></dd>
+          <dt>record</dt><dd>{run.record}</dd>
+          {run.utc && <><dt>utc</dt><dd>{run.utc}</dd></>}
+        </dl>
+
+        {run.error && <pre>{run.error}</pre>}
+
+        {run.duplicates > 0 && (
+          <p className="warn">
+            {run.n} oracles, but only {run.distinct_checks} distinct check
+            {run.distinct_checks === 1 ? "" : "s"} &mdash; {run.duplicates} of them execute
+            identically to an earlier one and differ only in <code>id</code> and the sentence
+            they claim to encode.
+          </p>
+        )}
+
+        {run.run_report && run.run_report.length > 0 && <>
+          <h2>Run-level checks</h2><Checks rows={run.run_report} />
+        </>}
+
+        <h2>Oracles produced ({(run.oracles || []).length})</h2>
+        {(run.oracles || []).length === 0
+          ? <p className="note">{run.status === "empty"
+              ? "No content came back from the provider."
+              : "The model returned an empty array - it declined every sentence."}</p>
+          : run.oracles.map((o, i) => <Oracle o={o} key={i} />)}
+
+        {run.raw_reply && <details><summary>raw reply</summary><pre>{run.raw_reply}</pre></details>}
+      </div>
+    </>
+  );
+}
+
+function ModelView({ model, runs, onPick, crumb }) {
+  const n = runs.length;
+  const t = s => runs.filter(r => r.status === s).length;
+  return (
+    <>
+      <div className="crumbs">{crumb}</div>
+      <h1 className="mono">{model}</h1>
+      <h2>This model</h2>
+      <Tiles cells={[
+        ["runs", n], ["passed", t("pass")], ["failed", t("fail")],
+        ["abstained", t("abstain")], ["empty", t("empty")],
+        ["dup runs", runs.filter(r => r.duplicates > 0).length,
+         "runs whose extra oracles are the same check renamed"],
+      ]} />
+      <h2>Runs</h2>
+      <div className="wrap"><table>
+        <thead><tr>
+          <th className="num">rep</th><th>status</th><th className="num">oracles</th>
+          <th className="num">distinct</th><th>count</th><th>required</th><th>forbidden</th>
+          <th>oracle ids</th>
+        </tr></thead>
+        <tbody>{runs.map(r => (
+          <tr key={r.rep} className="click" onClick={() => onPick(r)}>
+            <td className="num">{r.rep}</td>
+            <td><Chip s={r.status} /></td>
+            <td className="num">{r.status === "error" ? "-" : r.n}</td>
+            <td className="num">{r.duplicates > 0
+              ? <span className="dot bad">{r.distinct_checks}</span> : r.distinct_checks}</td>
+            <td>{r.count ? <Mark s={r.count} /> : "-"}</td>
+            <td>{r.required ? <Mark s={r.required} /> : "-"}</td>
+            <td>{r.forbidden ? <Mark s={r.forbidden} /> : "-"}</td>
+            <td className="mono">{(r.oracles || []).map(o => o.id).join(", ") || "-"}</td>
+          </tr>
+        ))}</tbody>
+      </table></div>
+      <p className="note">Click a run for the oracles it produced.</p>
+    </>
+  );
+}
+
+function Overview({ manifest, onPick }) {
+  const t = manifest.totals;
+  return (
+    <>
+      <h2>Overall</h2>
+      <Tiles cells={[
+        ["calls", t.calls], ["passed", t.passed], ["failed", t.failed],
+        ["abstained", t.abstained], ["empty", t.empty], ["errors", t.errors],
+        ["dup runs", t.dup_runs || 0, "runs whose extra oracles are the same check renamed"],
+      ]} />
+      <h2>By model</h2>
+      <div className="wrap"><table>
+        <thead><tr>
+          <th>model</th><th>pass rate</th><th className="num">pass</th><th className="num">fail</th>
+          <th className="num">abstain</th><th className="num">empty</th><th className="num">error</th>
+          <th className="num">dup</th>
+        </tr></thead>
+        <tbody>
+          {manifest.by_model.slice()
+            .sort((a, b) => b.passed / b.calls - a.passed / a.calls || a.model.localeCompare(b.model))
+            .map(m => (
+            <tr key={m.model} className="click" onClick={() => onPick(m.model)}>
+              <td className="mono">{m.model}</td>
+              <td style={{ whiteSpace: "nowrap" }}>
+                <span className="bar"><i style={{ width: (100 * m.passed / m.calls) + "%" }} /></span>
+                {m.passed}/{m.calls}
+              </td>
+              <td className="num">{m.passed}</td><td className="num">{m.failed}</td>
+              <td className="num">{m.abstained}</td><td className="num">{m.empty}</td>
+              <td className="num">{m.errors}</td>
+              <td className="num">{m.dup_runs
+                ? <span className="dot bad">{m.dup_runs}</span> : 0}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      <p className="note">Click a model to see its runs.</p>
+    </>
+  );
+}
+
+function App() {
+  const [index, setIndex] = useState(null);
+  const [sweep, setSweep] = useState(null);
+  const [manifest, setManifest] = useState(null);
+  const [model, setModel] = useState(null);
+  const [run, setRun] = useState(null);
+  const [err, setErr] = useState(null);
+
+  useEffect(() => {
+    fetch("sweeps.json").then(r => r.json()).then(list => {
+      setIndex(list);
+      if (list.length) setSweep(list[0].sweep);
+    }).catch(e => setErr(String(e)));
+  }, []);
+
+  useEffect(() => {
+    if (!sweep) return;
+    setManifest(null); setModel(null); setRun(null);
+    fetch(sweep + "/manifest.json").then(r => r.json()).then(setManifest)
+      .catch(e => setErr(String(e)));
+  }, [sweep]);
+
+  if (err) return (
+    <div className="card">
+      <p><b>Could not load the sweep index.</b></p>
+      <p className="note"><code>fetch</code> is blocked on <code>file://</code> - serve the directory:</p>
+      <pre>cd helper_scripts && python3 -m http.server 8765{"\n"}open http://localhost:8765/dashboard.html</pre>
+      <p className="note">If no sweep has a manifest yet:
+        <code> python helper_scripts/sweep_models.py --rebuild-manifests</code></p>
+      <pre>{err}</pre>
+    </div>
+  );
+  if (!index) return <p className="note">Loading&hellip;</p>;
+  if (!index.length) return (
+    <div className="card"><p>No sweeps with a manifest.</p>
+      <pre>python helper_scripts/sweep_models.py --rebuild-manifests</pre></div>
+  );
+
+  const link = (label, fn) => <a href="#" onClick={e => { e.preventDefault(); fn(); }}>{label}</a>;
+  const crumbOverview = link("all models", () => { setModel(null); setRun(null); });
+  const crumbModel = model && link(model, () => setRun(null));
+
+  return (
+    <>
+      <div className="topbar">
+        <div>
+          <h1>Specifier sweeps</h1>
+          {manifest && <div className="meta">
+            case <code>{manifest.case}</code>
+            {manifest.started_utc && <> &middot; {manifest.started_utc.slice(0, 16).replace("T", " ")} UTC</>}
+            {typeof manifest.prompt_sha256 === "string" &&
+              <> &middot; prompt <code>{manifest.prompt_sha256.slice(0, 12)}</code></>}
+            {Array.isArray(manifest.prompt_sha256) &&
+              <> &middot; <b style={{ color: "var(--fail)" }}>mixed prompts - runs are not comparable</b></>}
+          </div>}
+        </div>
+        <select value={sweep || ""} onChange={e => setSweep(e.target.value)}>
+          {index.map(s => (
+            <option key={s.sweep} value={s.sweep}>
+              {s.sweep} - {s.totals ? `${s.totals.passed}/${s.totals.calls} passed` : ""}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {!manifest ? <p className="note">Loading sweep&hellip;</p>
+        : run ? <RunDetail run={run} crumb={<>{crumbOverview} / {crumbModel} / rep {run.rep}</>} />
+        : model ? <ModelView model={model} crumb={<>{crumbOverview} / {model}</>}
+                    runs={manifest.runs.filter(r => r.model === model)} onPick={setRun} />
+        : <Overview manifest={manifest} onPick={setModel} />}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>

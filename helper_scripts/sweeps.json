@@ -1,0 +1,18 @@
+[
+  {
+    "sweep": "sweep-20260914T154136Z",
+    "case": "guti-reuse-mt-access",
+    "utc": null,
+    "models": 9,
+    "totals": {
+      "calls": 27,
+      "valid": 26,
+      "passed": 9,
+      "failed": 6,
+      "abstained": 11,
+      "empty": 1,
+      "errors": 0,
+      "dup_runs": 5
+    }
+  }
+]
