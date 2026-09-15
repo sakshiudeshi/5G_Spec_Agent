@@ -69,24 +69,13 @@ def run_status(row: dict) -> str:
 
 
 def fingerprint(o: dict) -> str:
-    """What an oracle actually executes: matcher + observed primitive + predicate form.
-
-    The variable name is not part of it -- `distinct(v)` and `distinct(tmsi)` over the same
-    primitive are one check. Two oracles sharing a fingerprint are the same executable check
-    wearing different names, whatever sentence each one claims to encode.
-    """
-    observe = o.get("observe") or {}
-    predicate = (o.get("predicate") or "").strip()
+    """Delegate to the harness's own notion of oracle identity, so the dashboard and the
+    `distinct_oracles` check can never disagree about what counts as the same check."""
+    from run import fingerprint as canonical  # repo is already on sys.path
     try:
-        from run import validate_oracle  # canonical parse; repo is already on sys.path
-        spec = validate_oracle(o)
-        relation = spec["relation"]
-        literal = spec["literal"]
-        observes = [observe.get(spec["variable"])]
-    except Exception:
-        relation, literal, observes = predicate, None, sorted(observe.values())
-    return json.dumps({"matcher": o.get("matcher") or {}, "observes": observes,
-                       "relation": relation, "literal": literal}, sort_keys=True)
+        return canonical(o)
+    except Exception:  # malformed oracles are a schema error, not a duplicate
+        return json.dumps({"unparsed": o.get("id")}, sort_keys=True)
 
 
 def oracle_details(record: dict, extract) -> list[dict]:

@@ -80,6 +80,27 @@ def validate_oracle(oracle: dict) -> dict:
     )
 
 
+def fingerprint(oracle: dict) -> str:
+    """What the oracle executes, canonically: matcher, observations, relation, literal.
+
+    The bound name is not part of it -- `distinct(v)` and `distinct(tmsi)` over the same
+    primitive are one check. Every observed primitive is, not just the one the predicate
+    names: an unused binding still decides `undecodable-pdu`. Two oracles with equal
+    fingerprints are one check under two names, whatever sentence each claims to encode.
+    """
+    spec = validate_oracle(oracle)
+    return json.dumps(
+        {
+            "matcher": oracle.get("matcher", {}),
+            "observes": sorted(oracle["observe"].values()),
+            "predicate_on": oracle["observe"][spec["variable"]],
+            "relation": spec["relation"],
+            "literal": spec["literal"],
+        },
+        sort_keys=True,
+    )
+
+
 def matches(record: Record, matcher: dict) -> bool:
     """All matcher keys AND-ed; an omitted key means don't care."""
     return all(getattr(record, key) == value for key, value in matcher.items())

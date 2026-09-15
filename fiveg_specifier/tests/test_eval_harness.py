@@ -8,6 +8,7 @@ import pytest
 
 import decode
 import eval_harness
+import run
 import specify
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -248,6 +249,63 @@ def test_oracle_file_lane_reads_one_object_or_an_array(tmp_path, golden, case):
     assert _by_case(pair["run_report"])["count"]["status"] == "fail", "two oracles, expected 1..1"
 
 
+# duplicate oracles: one check wearing two names
+
+
+def test_fingerprint_ignores_the_bound_name(golden):
+    renamed = copy.deepcopy(golden)
+    renamed["observe"] = {"other": golden["observe"]["tmsi"]}
+    renamed["predicate"] = "distinct(other)"
+    assert run.fingerprint(renamed) == run.fingerprint(golden)
+
+
+def test_fingerprint_separates_the_matcher(golden):
+    narrower = copy.deepcopy(golden)
+    narrower["matcher"] = {**golden["matcher"], "id_type": "tmsi"}
+    assert run.fingerprint(narrower) != run.fingerprint(golden)
+
+
+def test_fingerprint_separates_an_unused_observe_binding(golden):
+    """An extra binding is not inert -- it can decide `undecodable-pdu`."""
+    extra = copy.deepcopy(golden)
+    extra["observe"] = {**golden["observe"], "cause": "establishment_cause"}
+    assert run.fingerprint(extra) != run.fingerprint(golden)
+
+
+def test_one_oracle_is_all_distinct(golden, case):
+    _per_oracle, run_report = eval_harness.run_case(case, [golden])
+    assert _by_case(run_report)["distinct_oracles"]["status"] == "ok"
+
+
+def test_renaming_an_oracle_does_not_make_it_a_second_check(golden, case):
+    """The glm/fable failure mode: same matcher, observe and predicate, a new id and rule."""
+    twin = copy.deepcopy(golden)
+    twin["id"] = "NR-GUTI-02"
+    twin["nl_rule"] = (
+        "This new 5G-GUTI shall be sent before the current NAS signalling connection is "
+        "released or the N1 NAS signalling connection is suspended."
+    )
+    entry = _by_case(eval_harness.run_case(case, [golden, twin])[1])["distinct_oracles"]
+    assert entry["status"] == "fail"
+    assert entry["got"] == "NR-GUTI-02 = NR-GUTI-01"
+
+
+def test_two_genuinely_different_checks_are_distinct(golden, case):
+    """opus's second oracle: a real second check, caught by count rather than by this one."""
+    other = copy.deepcopy(golden)
+    other["id"] = "GUTI-REG-02"
+    other["matcher"] = {**golden["matcher"], "establishment_cause": "mo-Signalling"}
+    assert _by_case(eval_harness.run_case(case, [golden, other])[1])["distinct_oracles"]["status"] == "ok"
+
+
+def test_duplicates_are_counted_among_valid_oracles_only(golden, case):
+    """A malformed twin never reaches the check; it is already a schema error."""
+    broken = copy.deepcopy(golden)
+    broken["id"], broken["predicate"] = "BROKEN-01", "sometimes(tmsi)"
+    run_report = eval_harness.run_case(case, [golden, broken])[1]
+    assert _by_case(run_report)["distinct_oracles"]["status"] == "ok"
+
+
 # report
 
 
@@ -256,12 +314,12 @@ def test_render_reports_the_failing_run(case):
     assert f"case {CASE_NAME}" in text
     assert "TMSI-UNPRED-01" in text
     assert "FAIL (violate)" in text and "FAIL (pass)" in text
-    assert "RUN FAILED: 4 of 9 checks" in text
+    assert "RUN FAILED: 4 of 10 checks" in text
 
 
 def test_render_reports_the_passing_run(golden, case):
     text = eval_harness.render(eval_harness.run_oracle_file(CASE_NAME, case, GOLDEN_ORACLE))
-    assert "RUN PASSED: 9 checks (1 skipped)" in text
+    assert "RUN PASSED: 10 checks (1 skipped)" in text
     assert "FAIL" not in text
 
 

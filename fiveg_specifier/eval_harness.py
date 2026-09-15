@@ -12,7 +12,8 @@ from pathlib import Path
 
 import specify
 from decode import load_capture
-from run import VERDICTS, OracleError, evaluate, evaluate_witnesses, validate_oracle, witness_records
+from run import (VERDICTS, OracleError, evaluate, evaluate_witnesses, fingerprint,
+                 validate_oracle, witness_records)
 
 HERE = Path(__file__).resolve().parent
 EVALS = HERE / "evals"
@@ -231,6 +232,18 @@ def run_case(case: dict, oracles: list) -> tuple[list[dict], list[dict]]:
     low, high = expect["count"]["min"], expect["count"]["max"]
     run_report = [_entry("count", f"{low}..{high}", str(len(valid)),
                          "ok" if low <= len(valid) <= high else "fail")]
+    seen: dict[str, str] = {}
+    duplicates = []
+    for oracle in valid:
+        fp = fingerprint(oracle)
+        if fp in seen:
+            duplicates.append(f"{_oracle_id(oracle)} = {seen[fp]}")
+        else:
+            seen[fp] = _oracle_id(oracle)
+    run_report.append(_entry("distinct_oracles", "no two alike",
+                             ", ".join(duplicates) or "all distinct",
+                             "fail" if duplicates else "ok"))
+
     for shape in expect["required"]:
         hit = _first_match(valid, shape)
         run_report.append(_entry(f"required:{shape['name']}", "one oracle matches",
