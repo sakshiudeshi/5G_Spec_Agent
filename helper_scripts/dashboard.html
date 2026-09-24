@@ -309,27 +309,74 @@ function Overview({ manifest, onPick }) {
   );
 }
 
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  return { sweep: p.get("sweep"), model: p.get("model"), rep: p.get("rep") };
+}
+
+function hashOf(r) {
+  const p = new URLSearchParams();
+  if (r.sweep) p.set("sweep", r.sweep);
+  if (r.model) p.set("model", r.model);
+  if (r.rep !== null && r.rep !== undefined && r.rep !== "") p.set("rep", String(r.rep));
+  const q = p.toString();
+  return q ? "#" + q : location.pathname;
+}
+
 function App() {
   const [index, setIndex] = useState(null);
-  const [sweep, setSweep] = useState(null);
-  const [manifest, setManifest] = useState(null);
-  const [model, setModel] = useState(null);
-  const [run, setRun] = useState(null);
+  const [manifests, setManifests] = useState({});
+  const [route, setRoute] = useState(readHash);
   const [err, setErr] = useState(null);
+  const restoreY = React.useRef(null);
+  const asked = React.useRef({});
+
+  const go = (next, replace) => {
+    if (!replace) {
+      history.replaceState({ scroll: window.scrollY }, "", hashOf(route));
+      history.pushState({ scroll: 0 }, "", hashOf(next));
+      window.scrollTo(0, 0);
+    } else {
+      history.replaceState({ scroll: window.scrollY }, "", hashOf(next));
+    }
+    setRoute(next);
+  };
 
   useEffect(() => {
-    fetch("sweeps.json").then(r => r.json()).then(list => {
-      setIndex(list);
-      if (list.length) setSweep(list[0].sweep);
-    }).catch(e => setErr(String(e)));
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    const onPop = () => {
+      restoreY.current = (history.state && history.state.scroll) || 0;
+      setRoute(readHash());
+    };
+    addEventListener("popstate", onPop);
+    return () => removeEventListener("popstate", onPop);
   }, []);
 
   useEffect(() => {
-    if (!sweep) return;
-    setManifest(null); setModel(null); setRun(null);
-    fetch(sweep + "/manifest.json").then(r => r.json()).then(setManifest)
+    fetch("sweeps.json").then(r => r.json()).then(setIndex).catch(e => setErr(String(e)));
+  }, []);
+
+  useEffect(() => {
+    if (!index || !index.length) return;
+    if (!index.some(s => s.sweep === route.sweep)) go({ sweep: index[0].sweep }, true);
+  }, [index]);
+
+  const sweep = route.sweep;
+  const manifest = sweep ? manifests[sweep] : null;
+
+  useEffect(() => {
+    if (!sweep || asked.current[sweep]) return;
+    asked.current[sweep] = true;
+    fetch(sweep + "/manifest.json").then(r => r.json())
+      .then(m => setManifests(all => ({ ...all, [sweep]: m })))
       .catch(e => setErr(String(e)));
   }, [sweep]);
+
+  React.useLayoutEffect(() => {
+    if (restoreY.current === null || !manifest) return;
+    window.scrollTo(0, restoreY.current);
+    restoreY.current = null;
+  });
 
   if (err) return (
     <div className="card">
@@ -347,9 +394,16 @@ function App() {
       <pre>python helper_scripts/sweep_models.py --rebuild-manifests</pre></div>
   );
 
-  const link = (label, fn) => <a href="#" onClick={e => { e.preventDefault(); fn(); }}>{label}</a>;
-  const crumbOverview = link("all models", () => { setModel(null); setRun(null); });
-  const crumbModel = model && link(model, () => setRun(null));
+  const runs = manifest && route.model
+    ? manifest.runs.filter(r => r.model === route.model) : null;
+  const run = runs && route.rep
+    ? runs.find(r => String(r.rep) === String(route.rep)) : null;
+
+  const link = (label, next) => (
+    <a href={hashOf(next)} onClick={e => { e.preventDefault(); go(next); }}>{label}</a>
+  );
+  const crumbOverview = link("all models", { sweep });
+  const crumbModel = route.model && link(route.model, { sweep, model: route.model });
 
   return (
     <>
@@ -365,7 +419,7 @@ function App() {
               <> &middot; <b style={{ color: "var(--fail)" }}>mixed prompts - runs are not comparable</b></>}
           </div>}
         </div>
-        <select value={sweep || ""} onChange={e => setSweep(e.target.value)}>
+        <select value={sweep || ""} onChange={e => go({ sweep: e.target.value })}>
           {index.map(s => (
             <option key={s.sweep} value={s.sweep}>
               {s.sweep} - {s.totals ? `${s.totals.passed}/${s.totals.calls} passed` : ""}
@@ -376,9 +430,9 @@ function App() {
 
       {!manifest ? <p className="note">Loading sweep&hellip;</p>
         : run ? <RunDetail run={run} crumb={<>{crumbOverview} / {crumbModel} / rep {run.rep}</>} />
-        : model ? <ModelView model={model} crumb={<>{crumbOverview} / {model}</>}
-                    runs={manifest.runs.filter(r => r.model === model)} onPick={setRun} />
-        : <Overview manifest={manifest} onPick={setModel} />}
+        : runs && runs.length ? <ModelView model={route.model} crumb={<>{crumbOverview} / {route.model}</>}
+                   runs={runs} onPick={r => go({ sweep, model: route.model, rep: r.rep })} />
+        : <Overview manifest={manifest} onPick={m => go({ sweep, model: m })} />}
     </>
   );
 }
