@@ -22,15 +22,18 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent / "fiveg_specifier"
 
 MODELS = [
+    "openai/gpt-6-sol",
+    "openai/gpt-6-luna",
     "openai/gpt-6-astra",
-    "openai/gpt-5.6-sol",
-    "openai/gpt-5.6-terra",
-    "anthropic/claude-fable-5.1",
-    "anthropic/claude-opus-5",
-    "anthropic/claude-sonnet-5",
-    "moonshotai/kimi-k3",
-    "z-ai/glm-5.3-flash",
-    "google/gemini-3.8-flash",
+    "anthropic/claude-opus-5.5",
+    # "openai/gpt-5.6-sol",
+    # "openai/gpt-5.6-terra",
+    # "anthropic/claude-fable-5.1",
+    # "anthropic/claude-opus-5",
+    # "anthropic/claude-sonnet-5",
+    # "moonshotai/kimi-k3",
+    # "z-ai/glm-5.3-flash",
+    # "google/gemini-3.8-flash",
 ]
 
 

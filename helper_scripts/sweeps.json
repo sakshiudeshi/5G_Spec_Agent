@@ -1,5 +1,69 @@
 [
   {
+    "sweep": "sweep-20260924T025313Z",
+    "case": "guti-reuse-mt-access",
+    "utc": "2026-09-24T02:53:13.424470+00:00",
+    "models": 4,
+    "totals": {
+      "calls": 12,
+      "valid": 11,
+      "passed": 5,
+      "failed": 0,
+      "abstained": 6,
+      "empty": 1,
+      "errors": 0,
+      "dup_runs": 0
+    }
+  },
+  {
+    "sweep": "sweep-20260924T023819Z",
+    "case": "guti-reuse-mt-access",
+    "utc": "2026-09-24T02:38:19.337811+00:00",
+    "models": 1,
+    "totals": {
+      "calls": 3,
+      "valid": 3,
+      "passed": 3,
+      "failed": 0,
+      "abstained": 0,
+      "empty": 0,
+      "errors": 0,
+      "dup_runs": 0
+    }
+  },
+  {
+    "sweep": "sweep-20260924T023717Z",
+    "case": "guti-reuse-mt-access",
+    "utc": "2026-09-24T02:37:17.231170+00:00",
+    "models": 3,
+    "totals": {
+      "calls": 9,
+      "valid": 6,
+      "passed": 0,
+      "failed": 0,
+      "abstained": 6,
+      "empty": 0,
+      "errors": 3,
+      "dup_runs": 0
+    }
+  },
+  {
+    "sweep": "sweep-20260924T023325Z",
+    "case": "guti-reuse-mt-access",
+    "utc": "2026-09-24T02:33:25.101114+00:00",
+    "models": 2,
+    "totals": {
+      "calls": 6,
+      "valid": 6,
+      "passed": 0,
+      "failed": 0,
+      "abstained": 6,
+      "empty": 0,
+      "errors": 0,
+      "dup_runs": 0
+    }
+  },
+  {
     "sweep": "sweep-20260914T154136Z",
     "case": "guti-reuse-mt-access",
     "utc": null,
