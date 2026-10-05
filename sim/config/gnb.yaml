@@ -1,0 +1,19 @@
+mcc: '999'
+mnc: '70'
+nci: '0x000000010'
+idLength: 32
+tac: 1
+
+linkIp: 10.100.200.20   # RLS (simulated radio), UDP 4997
+ngapIp: 10.100.200.20   # N2 to AMF
+gtpIp: 10.100.200.20    # N3 to UPF
+
+amfConfigs:
+  - address: 10.100.200.10
+    port: 38412
+
+slices:
+  - sst: 1
+
+ignoreStreamIds: true
+cellAccessType: nr

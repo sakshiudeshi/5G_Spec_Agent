@@ -1,0 +1,11 @@
+{
+  "id": "tmsi-reuse-after-paging",
+  "description": "The AMF answers a paging-triggered Service Request without assigning a new 5G-GUTI, so the UE keeps presenting the same 5G-S-TMSI on every mt-Access RRCSetupRequest.",
+  "culprit": "amf",
+  "faults": ["amf.paging.skip_guti_realloc"],
+  "workload": { "paging_cycles": 3 },
+  "ground_truth": {
+    "spec": "fiveg_specifier/spec/33501_6_12_3.json",
+    "violated_paragraphs": [3]
+  }
+}

@@ -1,0 +1,68 @@
+# 5G SA hello world: Open5GS core + UERANSIM gNB + UERANSIM UE.
+#   python3 run_scenario.py scenarios/<name>.json; see README.md
+name: fiveg-sim
+
+networks:
+  sim:
+    ipam:
+      config:
+        - subnet: 10.100.200.0/24
+
+services:
+  mongo:
+    image: mongo:6.0
+    volumes:
+      - ./config/subscriber.js:/docker-entrypoint-initdb.d/subscriber.js:ro
+    healthcheck:  # bridge IP, so the localhost-only init-phase mongod doesn't count
+      test: ["CMD-SHELL", "mongosh --quiet --host 10.100.200.5 open5gs --eval 'quit(db.subscribers.countDocuments() > 0 ? 0 : 1)'"]
+      interval: 2s
+      retries: 30
+    networks: { sim: { ipv4_address: 10.100.200.5 } }
+
+  core:
+    image: fiveg-sim/open5gs
+    build: { context: ., dockerfile: docker/open5gs.Dockerfile }
+    entrypoint: /entrypoint.sh
+    environment:
+      FIVEG_SIM_FAULTS: ${FIVEG_SIM_FAULTS:-}   # see open5gs/fault-hooks.patch
+    volumes:
+      - ./docker/open5gs-entrypoint.sh:/entrypoint.sh:ro
+    depends_on: { mongo: { condition: service_healthy } }
+    cap_add: [NET_ADMIN]
+    devices: ["/dev/net/tun"]
+    sysctls: { net.ipv4.ip_forward: 1 }
+    healthcheck:  # AMF listening for NGAP
+      test: ["CMD-SHELL", "ss -lnA sctp | grep -q ':38412'"]
+      interval: 2s
+      retries: 30
+    networks: { sim: { ipv4_address: 10.100.200.10 } }
+
+  gnb:
+    image: fiveg-sim/ueransim
+    build: { context: docker, dockerfile: ueransim.Dockerfile }
+    # tcpdump at the gNB: air (RLS, UDP 4997), N2 (NGAP/SCTP), N3 (GTP-U, UDP 2152).
+    command: >
+      bash -c "tcpdump -i eth0 -U -w /captures/gnb.pcap 'udp port 4997 or sctp or udp port 2152' 2>/dev/null &
+               sleep 1; exec nr-gnb -c /ueransim/gnb.yaml"
+    volumes:
+      - ./config/gnb.yaml:/ueransim/gnb.yaml:ro
+      - ./captures:/captures
+    depends_on: { core: { condition: service_healthy } }
+    healthcheck:  # NG Setup with the AMF done
+      test: ["CMD-SHELL", "nr-cli UERANSIM-gnb-999-70-1 -e status | grep -q 'is-ngap-up: true'"]
+      interval: 2s
+      retries: 30
+    cap_add: [NET_ADMIN, NET_RAW]
+    networks: { sim: { ipv4_address: 10.100.200.20 } }
+
+  ue:
+    image: fiveg-sim/ueransim
+    command: nr-ue -c /ueransim/ue.yaml
+    volumes:
+      - ./config/ue.yaml:/ueransim/ue.yaml:ro
+    depends_on: { gnb: { condition: service_healthy } }
+    cap_add: [NET_ADMIN]
+    devices: ["/dev/net/tun"]
+    # No IPv6: its router solicitations on uesimtun0 wake an idle UE (mo-Data), masking paging.
+    sysctls: { net.ipv6.conf.all.disable_ipv6: 1, net.ipv6.conf.default.disable_ipv6: 1 }
+    networks: { sim: { ipv4_address: 10.100.200.30 } }

@@ -1,0 +1,136 @@
+diff --git a/src/amf/fault.c b/src/amf/fault.c
+new file mode 100644
+index 0000000..c436394
+--- /dev/null
++++ b/src/amf/fault.c
+@@ -0,0 +1,45 @@
++/*
++ * Fault injection for conformance-oracle experiments (fiveg-sim).
++ */
++
++#include <stdlib.h>
++#include <string.h>
++
++#include "ogs-core.h"
++#include "fault.h"
++
++#define MAX_FAULTS 32
++#define MAX_FAULT_NAME 64
++
++static char faults[MAX_FAULTS][MAX_FAULT_NAME];
++static int num_faults = -1;
++
++static void load(void)
++{
++    const char *env = getenv("FIVEG_SIM_FAULTS");
++    char buf[MAX_FAULTS * MAX_FAULT_NAME];
++    char *saveptr = NULL, *tok;
++
++    num_faults = 0;
++    if (!env || !*env)
++        return;
++
++    ogs_cpystrn(buf, env, sizeof(buf));
++    for (tok = strtok_r(buf, ", ", &saveptr); tok && num_faults < MAX_FAULTS;
++            tok = strtok_r(NULL, ", ", &saveptr)) {
++        ogs_cpystrn(faults[num_faults++], tok, MAX_FAULT_NAME);
++        ogs_warn("[FAULT] enabled: %s", tok);
++    }
++}
++
++bool amf_fault_active(const char *name)
++{
++    int i;
++
++    if (num_faults < 0)
++        load();
++    for (i = 0; i < num_faults; i++)
++        if (strcmp(faults[i], name) == 0)
++            return true;
++    return false;
++}
+diff --git a/src/amf/fault.h b/src/amf/fault.h
+new file mode 100644
+index 0000000..5908765
+--- /dev/null
++++ b/src/amf/fault.h
+@@ -0,0 +1,28 @@
++/*
++ * Fault injection for conformance-oracle experiments (fiveg-sim).
++ *
++ * FIVEG_SIM_FAULTS is a comma-separated list of fault names, read once at
++ * first use. Each name switches one deliberate nonconformance on; with the
++ * variable unset, the AMF is stock Open5GS.
++ */
++
++#ifndef AMF_FAULT_H
++#define AMF_FAULT_H
++
++#include <stdbool.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++/* Skip 5G-GUTI reallocation after a paging-triggered Service Request
++ * (TS 24.501 5.3.3 c, TS 33.501 6.12.3). */
++#define AMF_FAULT_PAGING_SKIP_GUTI_REALLOC "amf.paging.skip_guti_realloc"
++
++bool amf_fault_active(const char *name);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* AMF_FAULT_H */
+diff --git a/src/amf/meson.build b/src/amf/meson.build
+index e626fb9..a3ad242 100644
+--- a/src/amf/meson.build
++++ b/src/amf/meson.build
+@@ -64,6 +64,7 @@ libamf_sources = files('''
+     metrics.c
+     gnb-info.c
+     ue-info.c
++    fault.c
+     ../../lib/metrics/prometheus/json_pager.c
+ '''.split())
+ 
+diff --git a/src/amf/ngap-handler.c b/src/amf/ngap-handler.c
+index add12d5..be5b69f 100644
+--- a/src/amf/ngap-handler.c
++++ b/src/amf/ngap-handler.c
+@@ -21,6 +21,7 @@
+ #include "ngap-path.h"
+ #include "sbi-path.h"
+ #include "nas-path.h"
++#include "fault.h"
+ 
+ static bool maximum_number_of_gnbs_is_reached(void)
+ {
+@@ -1387,14 +1388,19 @@ void ngap_handle_initial_context_setup_response(
+          * The AMF may assign a new 5G-GUTI at any time for a particular UE
+          * by performing the generic UE configuration update procedure.
+          */
+-        amf_ue_new_guti(amf_ue);
++        if (amf_fault_active(AMF_FAULT_PAGING_SKIP_GUTI_REALLOC)) {
++            ogs_warn("[FAULT] %s: no new 5G-GUTI after paging [%s]",
++                    AMF_FAULT_PAGING_SKIP_GUTI_REALLOC, amf_ue->supi);
++        } else {
++            amf_ue_new_guti(amf_ue);
+ 
+-        memset(&param, 0, sizeof(param));
+-        param.acknowledgement_requested = 1;
+-        param.guti = 1;
+-        r = nas_5gs_send_configuration_update_command(amf_ue, &param);
+-        ogs_expect(r == OGS_OK);
+-        ogs_assert(r != OGS_ERROR);
++            memset(&param, 0, sizeof(param));
++            param.acknowledgement_requested = 1;
++            param.guti = 1;
++            r = nas_5gs_send_configuration_update_command(amf_ue, &param);
++            ogs_expect(r == OGS_OK);
++            ogs_assert(r != OGS_ERROR);
++        }
+ 
+         AMF_UE_CLEAR_PAGING_INFO(amf_ue);
+     }
