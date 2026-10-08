@@ -136,6 +136,20 @@ def judge(expected: str, got: str) -> bool:
     return got == "violate" if expected == "violate" else got != "violate"
 
 
+def uncovered_paragraphs(oracles: list[dict], truth: dict, violated: list[str]) -> list[int]:
+    """Violated paragraph indices that no oracle targets."""
+    return [i for i, text in zip(truth["violated_paragraphs"], violated)
+            if not any(expected_verdict(o, [text]) == "violate" for o in oracles)]
+
+
+def overall_status(all_ok: bool, uncovered: list[int]) -> str:
+    # An undetectable fault is not a pass.
+    return "FAIL" if not all_ok else "NO ORACLE" if uncovered else "PASS"
+
+
+EXIT_CODES = {"PASS": 0, "FAIL": 1, "NO ORACLE": 2}
+
+
 # main
 
 
@@ -166,7 +180,7 @@ def main() -> None:
             if name:  # the stock image stays: it is every faulted image's base
                 subprocess.run(["docker", "image", "rm", f"fiveg-sim/open5gs:{tag}"],
                                capture_output=True)
-    sys.exit({"PASS": 0, "FAIL": 1, "NO ORACLE": 2}[status])
+    sys.exit(EXIT_CODES[status])
 
 
 def run(args, scenario: dict, tag: str, name: str | None, params: dict,
@@ -216,12 +230,10 @@ def run(args, scenario: dict, tag: str, name: str | None, params: dict,
         got = verdict["verdict"] + (f" ({verdict['reason']})" if verdict["reason"] else "")
         log(f"  {'OK  ' if ok else 'FAIL'}  {oracle['id']:<24} expected {expected:<12} got {got:<30} {source}")
 
-    # A violated paragraph no oracle targets leaves the fault undetectable, which is not a pass.
-    uncovered = [i for i, text in zip(truth["violated_paragraphs"], violated)
-                 if not any(expected_verdict(o, [text]) == "violate" for _, o in checked)]
+    uncovered = uncovered_paragraphs([o for _, o in checked], truth, violated)
     for i in uncovered:
         log(f"  NONE  paragraph {i}: no oracle targets it")
-    status = "FAIL" if not all_ok else "NO ORACLE" if uncovered else "PASS"
+    status = overall_status(all_ok, uncovered)
 
     report = {"scenario": scenario, "run": out_dir.name, "status": status, "ok": all_ok,
               "uncovered_paragraphs": uncovered, "oracles": results}
