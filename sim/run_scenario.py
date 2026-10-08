@@ -167,7 +167,7 @@ def main() -> None:
         log(f"  {r.seq:>4}  {r.id_type or '-':7}  {r.ue_identity_tmsi or '-':39}  {r.establishment_cause}")
 
     log(f"\n== oracles vs ground truth ({len(violated)} violated rule(s))")
-    results, all_ok = [], True
+    results, checked, all_ok = [], [], True
     for source, oracle in load_oracles(args.oracles):
         try:
             validate_oracle(oracle)
@@ -175,6 +175,7 @@ def main() -> None:
             results.append({"source": source, "id": oracle.get("id"), "error": str(exc)})
             log(f"  SKIP  {oracle.get('id')}: invalid oracle ({exc})")
             continue
+        checked.append((source, oracle))
         verdict = evaluate(oracle, load_capture(rrc_pcap))
         expected = expected_verdict(oracle, violated)
         ok = judge(expected, verdict["verdict"])
@@ -183,12 +184,20 @@ def main() -> None:
         got = verdict["verdict"] + (f" ({verdict['reason']})" if verdict["reason"] else "")
         log(f"  {'OK  ' if ok else 'FAIL'}  {oracle['id']:<24} expected {expected:<12} got {got:<30} {source}")
 
-    report = {"scenario": scenario, "run": out_dir.name, "ok": all_ok, "oracles": results}
+    # A violated paragraph no oracle targets leaves the fault undetectable, which is not a pass.
+    uncovered = [i for i, text in zip(truth["violated_paragraphs"], violated)
+                 if not any(expected_verdict(o, [text]) == "violate" for _, o in checked)]
+    for i in uncovered:
+        log(f"  NONE  paragraph {i}: no oracle targets it")
+    status = "FAIL" if not all_ok else "NO ORACLE" if uncovered else "PASS"
+
+    report = {"scenario": scenario, "run": out_dir.name, "status": status, "ok": all_ok,
+              "uncovered_paragraphs": uncovered, "oracles": results}
     (out_dir / "report.json").write_text(json.dumps(report, indent=2) + "\n")
-    log(f"\n{'PASS' if all_ok else 'FAIL'}: run saved to {out_dir.relative_to(HERE)}/")
+    log(f"\n{status}: run saved to {out_dir.relative_to(HERE)}/")
     if not args.keep_up:
         dc("down", check=False)
-    sys.exit(0 if all_ok else 1)
+    sys.exit({"PASS": 0, "FAIL": 1, "NO ORACLE": 2}[status])
 
 
 if __name__ == "__main__":
