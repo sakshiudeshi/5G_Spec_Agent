@@ -20,11 +20,12 @@ services:
     networks: { sim: { ipv4_address: 10.100.200.5 } }
 
   core:
-    image: fiveg-sim/open5gs
-    build: { context: ., dockerfile: docker/open5gs.Dockerfile }
+    # Built by run_scenario.py: :stock, or :<fault> = stock + open5gs/faults/<fault>.patch
+    image: fiveg-sim/open5gs:${CORE_TAG:-stock}
     entrypoint: /entrypoint.sh
-    environment:
-      FIVEG_SIM_FAULTS: ${FIVEG_SIM_FAULTS:-}   # see open5gs/fault-hooks.patch
+    env_file:  # the scenario's fault params as FIVEG_FAULT_<NAME>=<value>
+      - path: ${FAULT_ENV_FILE:-/dev/null}
+        required: false
     volumes:
       - ./docker/open5gs-entrypoint.sh:/entrypoint.sh:ro
     depends_on: { mongo: { condition: service_healthy } }

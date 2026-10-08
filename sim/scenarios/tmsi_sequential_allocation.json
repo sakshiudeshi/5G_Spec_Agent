@@ -1,0 +1,11 @@
+{
+  "id": "tmsi-sequential-allocation",
+  "description": "The AMF hands out 5G-TMSIs from runs of run_length consecutive values, so each GUTI reallocation after paging advances the UE's 5G-S-TMSI by +1 (Hong et al. NDSS 2018; Lasierra et al. arXiv 2609.24656).",
+  "culprit": "amf",
+  "fault": { "name": "amf.guti.sequential_tmsi", "params": { "run_length": 100 } },
+  "workload": { "paging_cycles": 8 },
+  "ground_truth": {
+    "spec": "fiveg_specifier/spec/33501_6_12_3.json",
+    "violated_paragraphs": [7]
+  }
+}

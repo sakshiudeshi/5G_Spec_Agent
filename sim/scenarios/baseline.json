@@ -2,7 +2,7 @@
   "id": "baseline",
   "description": "Stock Open5GS: register, then page the UE back from idle. Nothing in the spec clause is violated.",
   "culprit": null,
-  "faults": [],
+  "fault": null,
   "workload": { "paging_cycles": 3 },
   "ground_truth": {
     "spec": "fiveg_specifier/spec/33501_6_12_3.json",

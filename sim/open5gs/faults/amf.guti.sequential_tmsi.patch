@@ -1,0 +1,67 @@
+diff --git a/src/amf/context.c b/src/amf/context.c
+index 1035cf7..4467604 100644
+--- a/src/amf/context.c
++++ b/src/amf/context.c
+@@ -36,6 +36,7 @@ static int context_initialized = 0;
+ static int num_of_ran_ue = 0;
+ static int num_of_amf_sess = 0;
+ 
++static void m_tmsi_sequential_runs_generate(void);
+ static void stats_add_ran_ue(void);
+ static void stats_remove_ran_ue(void);
+ static void stats_add_amf_session(void);
+@@ -65,7 +66,7 @@ void amf_context_init(void)
+     ogs_pool_init(&amf_sess_pool, ogs_app()->pool.sess);
+     /* Increase size of TMSI pool (#1827) */
+     ogs_pool_init(&m_tmsi_pool, ogs_global_conf()->max.ue*2);
+-    ogs_pool_random_id_generate(&m_tmsi_pool);
++    m_tmsi_sequential_runs_generate();
+ #if 0 /* For debugging : Verify whether there are duplicates of M_TMSI. */
+     ogs_pool_assert_if_has_duplicate(&m_tmsi_pool);
+ #endif
+@@ -2775,6 +2776,45 @@ int amf_m_tmsi_pool_generate(void)
+ }
+ #endif
+ 
++/*
++ * fiveg-sim fault: like ogs_pool_random_id_generate(), but shuffles runs of
++ * FIVEG_FAULT_RUN_LENGTH (default 100) consecutive ids instead of single
++ * ids. The pool hands ids out in array order, so successive 5G-TMSIs step
++ * by +1 (TS 33.501 6.12.3; Hong et al. NDSS 2018; Lasierra et al.
++ * arXiv 2609.24656).
++ */
++static void m_tmsi_sequential_runs_generate(void)
++{
++    const char *env = getenv("FIVEG_FAULT_RUN_LENGTH");
++    int run = env ? atoi(env) : 0;
++    int size = m_tmsi_pool.size;
++    int num_runs, *order, i, j, k = 0, tmp;
++    amf_m_tmsi_t id;
++
++    if (run <= 0)
++        run = 100;
++    ogs_warn("[FAULT] amf.guti.sequential_tmsi: M-TMSI pool in runs of %d",
++            run);
++
++    num_runs = (size + run - 1) / run;
++    order = malloc(sizeof(*order) * num_runs);
++    ogs_assert(order);
++    for (i = 0; i < num_runs; i++)
++        order[i] = i;
++    for (i = num_runs - 1; i > 0; i--) {
++        j = ogs_random32() % (i + 1);
++        tmp = order[i];
++        order[i] = order[j];
++        order[j] = tmp;
++    }
++    for (i = 0; i < num_runs; i++)
++        for (id = order[i] * run + 1;
++                id <= (amf_m_tmsi_t)ogs_min((order[i] + 1) * run, size); id++)
++            m_tmsi_pool.array[k++] = id;
++    ogs_assert(k == size);
++    free(order);
++}
++
+ amf_m_tmsi_t *amf_m_tmsi_alloc(void)
+ {
+     amf_m_tmsi_t *m_tmsi = NULL;

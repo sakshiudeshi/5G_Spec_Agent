@@ -18,11 +18,12 @@ python3 run_scenario.py scenarios/tmsi_reuse_after_paging.json \
     --oracles ../fiveg_specifier/golden_oracle.json ../fiveg_specifier/all_oracles
 ```
 
-A scenario (`scenarios/*.json`) is a fault list, a workload, and ground truth: the spec
-paragraphs the faulted system violates. The runner starts a fresh stack with those faults, drives
+A scenario (`scenarios/*.json`) is at most one fault, a workload, and ground truth: the spec
+paragraphs the faulted system violates. The runner starts a fresh stack on that fault's core image, drives
 the workload (register, ping, then `paging_cycles` x: gNB releases the UE, core pings it, AMF
 pages), and runs every oracle over the capture. An oracle whose `nl_rule` lies in a violated
-paragraph must return `violate`; every other oracle must not. Exit code 1 on any mismatch.
+paragraph must return `violate`; every other oracle must not. Exit code 1 (FAIL) on any
+mismatch; exit code 2 (NO ORACLE) when a violated paragraph has no oracle targeting it.
 
 `--oracles` takes oracle files, lists of oracles, or `specify.py` run records (their `accepted`
 oracles), so model-written oracles go straight from `all_oracles/` into a scenario.
@@ -32,19 +33,31 @@ Each run lands in `runs/<utc>-<scenario>/`: `gnb.pcap`, `rrc.pcap` (oracle input
 
 ## Faults
 
-Open5GS is built from source at v2.8.0 with `open5gs/fault-hooks.patch`. The patch adds
-`src/amf/fault.{c,h}` and one call site per fault. The core reads the comma-separated
-`FIVEG_SIM_FAULTS` (set by the runner from the scenario) when it first reaches a hook; with it
-unset, the core is stock Open5GS. The runner refuses a run whose faults never logged
-`[FAULT] enabled`, i.e. the workload never reached the hook.
+Each fault is one self-contained patch against stock Open5GS v2.8.0 in `open5gs/faults/`,
+named after the fault. Patches know nothing of each other; combining two faults means writing
+a patch for the pair.
 
-| fault | effect | violates |
-|---|---|---|
-| `amf.paging.skip_guti_realloc` | no Configuration Update Command with a new 5G-GUTI after a paging-triggered Service Request | TS 33.501 6.12.3 para 4, TS 24.501 5.3.3 c |
+```json
+"fault": { "name": "amf.guti.sequential_tmsi", "params": { "run_length": 100 } }
+```
 
-Adding one: define the name in `fault.h`, guard the behaviour with `amf_fault_active(...)`,
-regenerate the patch from an Open5GS checkout (`git diff v2.8.0 > sim/open5gs/fault-hooks.patch`),
-`docker compose build core`, then write a scenario.
+For each run the runner builds `fiveg-sim/open5gs:<name>`: the `stock` image plus that one
+patch (`docker/open5gs.Dockerfile`, target `faulted`; ninja recompiles only the touched files).
+`params` reach the core as `FIVEG_FAULT_<NAME>` env vars, so changing one needs no rebuild. A
+scenario with `"fault": null` runs `fiveg-sim/open5gs:stock`. After the run the fault image is
+deleted (kept with `--keep-up`); the stock image stays as the base for the next build.
+
+Every patch logs `[FAULT] <name>` where the core misbehaves. The runner refuses a run whose log
+lacks that line, i.e. the workload never reached the patched code.
+
+| fault | params | effect | violates |
+|---|---|---|---|
+| `amf.paging.skip_guti_realloc` | – | no Configuration Update Command with a new 5G-GUTI after a paging-triggered Service Request | TS 33.501 6.12.3 para 4, TS 24.501 5.3.3 c |
+| `amf.guti.sequential_tmsi` | `run_length` (100) | M-TMSI pool laid out as runs of `run_length` consecutive values in random run order, so successive 5G-TMSIs step by +1 | TS 33.501 6.12.3 para 8 |
+
+Adding one: edit a clean v2.8.0 checkout, log `[FAULT] <name>` at the faulty code, read any
+params with `getenv("FIVEG_FAULT_<NAME>")`, save `git diff > sim/open5gs/faults/<name>.patch`,
+then write a scenario.
 
 ## How the capture reaches the oracle
 
@@ -70,7 +83,7 @@ sends, so `rls_to_capture.py` re-frames each RRC PDU as rlc-nr over UDP (the for
 |---|---|
 | `docker-compose.yml` | mongo, core, gnb, ue on 10.100.200.0/24 |
 | `docker/` | image builds; `open5gs-entrypoint.sh` moves NGAP/GTP-U off loopback |
-| `open5gs/fault-hooks.patch` | the AMF fault hooks, applied at image build |
+| `open5gs/faults/` | one patch per fault against stock Open5GS, applied at image build |
 | `config/` | gNB and UE configs, subscriber seed for mongo |
 | `scenarios/` | faults + workload + ground truth |
 | `run_scenario.py` | scenario -> run -> oracle verdicts vs ground truth |

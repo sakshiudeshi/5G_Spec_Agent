@@ -1,0 +1,32 @@
+diff --git a/src/amf/ngap-handler.c b/src/amf/ngap-handler.c
+index add12d5..d7541e1 100644
+--- a/src/amf/ngap-handler.c
++++ b/src/amf/ngap-handler.c
+@@ -1364,8 +1364,6 @@ void ngap_handle_initial_context_setup_response(
+             }
+         }
+     } else if (PAGING_ONGOING(amf_ue) == true) {
+-        gmm_configuration_update_command_param_t param;
+-
+         /*
+          * TS24.501
+          * 5.3.3 Temporary identities
+@@ -1387,14 +1385,10 @@ void ngap_handle_initial_context_setup_response(
+          * The AMF may assign a new 5G-GUTI at any time for a particular UE
+          * by performing the generic UE configuration update procedure.
+          */
+-        amf_ue_new_guti(amf_ue);
+-
+-        memset(&param, 0, sizeof(param));
+-        param.acknowledgement_requested = 1;
+-        param.guti = 1;
+-        r = nas_5gs_send_configuration_update_command(amf_ue, &param);
+-        ogs_expect(r == OGS_OK);
+-        ogs_assert(r != OGS_ERROR);
++        /* fiveg-sim fault: no new 5G-GUTI after a paging-triggered
++         * Service Request (TS 24.501 5.3.3 c, TS 33.501 6.12.3). */
++        ogs_warn("[FAULT] amf.paging.skip_guti_realloc: "
++                "no new 5G-GUTI after paging [%s]", amf_ue->supi);
+ 
+         AMF_UE_CLEAR_PAGING_INFO(amf_ue);
+     }

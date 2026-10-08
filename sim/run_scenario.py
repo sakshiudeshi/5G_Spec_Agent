@@ -1,7 +1,8 @@
 """Scenario -> simulated 5G run -> capture -> every oracle -> verdicts checked against ground truth.
 
-A scenario (scenarios/*.json) names the faults to switch on, the workload to drive, and the
-spec paragraphs the faulted system violates. An oracle whose `nl_rule` lies in violated text must
+A scenario (scenarios/*.json) names at most one fault (an open5gs/faults/<name>.patch, built
+into its own core image), the workload to drive, and the spec paragraphs the faulted system
+violates. An oracle whose `nl_rule` lies in violated text must
 return `violate`; every other oracle must not.
 
     python3 run_scenario.py scenarios/tmsi_reuse_after_paging.json
@@ -16,6 +17,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -51,10 +53,28 @@ def dc(*args: str, env: dict | None = None, check: bool = True) -> str:
 # workload
 
 
-def start(faults: list[str]) -> None:
+def build_core(fault: str | None) -> str:
+    """Stock core, or stock + exactly one fault patch. Returns the image tag."""
+    tag = fault or "stock"
+    target = ["--target", "faulted", "--build-arg", f"FAULT={fault}"] if fault else ["--target", "stock"]
+    out = subprocess.run(
+        ["docker", "build", "-f", "docker/open5gs.Dockerfile", *target,
+         "-t", f"fiveg-sim/open5gs:{tag}", "."],
+        cwd=HERE, capture_output=True, text=True,
+    )
+    if out.returncode != 0:
+        raise RuntimeError(f"core image build failed ({tag})\n{out.stdout}{out.stderr}")
+    return tag
+
+
+def start(tag: str, params: dict) -> None:
+    """Fresh stack on core image `tag`; fault params reach the core as FIVEG_FAULT_<NAME>."""
     dc("down", "--remove-orphans", check=False)
     (HERE / "captures" / "gnb.pcap").unlink(missing_ok=True)
-    dc("up", "-d", "--wait", env={"FIVEG_SIM_FAULTS": ",".join(faults)})
+    with tempfile.NamedTemporaryFile("w", suffix=".env") as env_file:
+        env_file.write("".join(f"FIVEG_FAULT_{k.upper()}={v}\n" for k, v in params.items()))
+        env_file.flush()
+        dc("up", "-d", "--wait", env={"CORE_TAG": tag, "FAULT_ENV_FILE": env_file.name})
     for _ in range(30):
         if "inet " in dc("exec", "-T", "ue", "ip", "-4", "addr", "show", "uesimtun0", check=False):
             return
@@ -129,23 +149,35 @@ def main() -> None:
     args = ap.parse_args()
 
     scenario = json.loads(args.scenario.read_text())
-    faults = scenario.get("faults", [])
+    fault = scenario.get("fault") or {}
+    name, params = fault.get("name"), fault.get("params", {})
     truth = scenario["ground_truth"]
     paragraphs = json.loads((HERE.parent / truth["spec"]).read_text())["paragraphs"]
     violated = [paragraphs[i] for i in truth["violated_paragraphs"]]
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-    log(f"== scenario {scenario['id']}: faults {faults or 'none'}")
-    start(faults)
+    log(f"== scenario {scenario['id']}: fault {name or 'none'} {params or ''}")
+    tag = build_core(name)
+    try:
+        status = run(args, scenario, tag, name, params, violated, truth, stamp)
+    finally:
+        if not args.keep_up:
+            dc("down", check=False)
+            if name:  # the stock image stays: it is every faulted image's base
+                subprocess.run(["docker", "image", "rm", f"fiveg-sim/open5gs:{tag}"],
+                               capture_output=True)
+    sys.exit({"PASS": 0, "FAIL": 1, "NO ORACLE": 2}[status])
+
+
+def run(args, scenario: dict, tag: str, name: str | None, params: dict,
+        violated: list[str], truth: dict, stamp: str) -> str:
+    start(tag, params)
     run_workload(scenario.get("workload", {}))
-    # The core reads FIVEG_SIM_FAULTS at the first hook it reaches, so this also shows the
-    # workload drove the system through the faulted code path.
+    # Each fault patch logs "[FAULT] <name>" where it misbehaves, so this shows the workload
+    # drove the core through the faulted code path.
     core_log = dc("logs", "core", "--no-log-prefix", "--no-color")
-    unexercised = [f for f in faults if f"[FAULT] enabled: {f}" not in core_log]
-    if unexercised:
-        dc("down", check=False)
-        sys.exit(f"fault(s) {unexercised} never reached: workload missed the hook, "
-                 "or the core image predates the patch (docker compose build core)")
+    if name and f"[FAULT] {name}" not in core_log:
+        sys.exit(f"fault {name} never reached: the workload missed the patched code path")
 
     out_dir = HERE / "runs" / f"{stamp}-{scenario['id']}"
     out_dir.mkdir(parents=True)
@@ -195,9 +227,7 @@ def main() -> None:
               "uncovered_paragraphs": uncovered, "oracles": results}
     (out_dir / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     log(f"\n{status}: run saved to {out_dir.relative_to(HERE)}/")
-    if not args.keep_up:
-        dc("down", check=False)
-    sys.exit({"PASS": 0, "FAIL": 1, "NO ORACLE": 2}[status])
+    return status
 
 
 if __name__ == "__main__":
