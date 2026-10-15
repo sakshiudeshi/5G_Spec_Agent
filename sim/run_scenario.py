@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,6 +41,19 @@ def log(msg: str) -> None:
     print(msg, flush=True)
 
 
+@contextmanager
+def step(msg: str):
+    """Print `msg ...`, then how long the block took."""
+    print(f"  {msg} ...", end="", flush=True)
+    t0 = time.monotonic()
+    try:
+        yield
+    except BaseException:
+        print(" failed", flush=True)
+        raise
+    print(f" {time.monotonic() - t0:.1f}s", flush=True)
+
+
 def dc(*args: str, env: dict | None = None, check: bool = True) -> str:
     out = subprocess.run(
         ["docker", "compose", *args], cwd=HERE, env={**os.environ, **(env or {})},
@@ -53,33 +67,47 @@ def dc(*args: str, env: dict | None = None, check: bool = True) -> str:
 # workload
 
 
+def image_exists(ref: str) -> bool:
+    return subprocess.run(["docker", "image", "inspect", ref], capture_output=True).returncode == 0
+
+
 def build_core(fault: str | None) -> str:
     """Stock core, or stock + exactly one fault patch. Returns the image tag."""
     tag = fault or "stock"
+    if not image_exists("fiveg-sim/open5gs:stock"):
+        log("  no stock image yet: this build compiles all of Open5GS (~15 min)")
     target = ["--target", "faulted", "--build-arg", f"FAULT={fault}"] if fault else ["--target", "stock"]
-    out = subprocess.run(
-        ["docker", "build", "-f", "docker/open5gs.Dockerfile", *target,
-         "-t", f"fiveg-sim/open5gs:{tag}", "."],
-        cwd=HERE, capture_output=True, text=True,
-    )
-    if out.returncode != 0:
-        raise RuntimeError(f"core image build failed ({tag})\n{out.stdout}{out.stderr}")
+    what = f"stock + {fault}.patch" if fault else "stock Open5GS"
+    with step(f"build core image fiveg-sim/open5gs:{tag} ({what})"):
+        out = subprocess.run(
+            ["docker", "build", "-f", "docker/open5gs.Dockerfile", *target,
+             "-t", f"fiveg-sim/open5gs:{tag}", "."],
+            cwd=HERE, capture_output=True, text=True,
+        )
+        if out.returncode != 0:
+            raise RuntimeError(f"core image build failed ({tag})\n{out.stdout}{out.stderr}")
     return tag
 
 
 def start(tag: str, params: dict) -> None:
     """Fresh stack on core image `tag`; fault params reach the core as FIVEG_FAULT_<NAME>."""
-    dc("down", "--remove-orphans", check=False)
-    (HERE / "captures" / "gnb.pcap").unlink(missing_ok=True)
-    with tempfile.NamedTemporaryFile("w", suffix=".env") as env_file:
-        env_file.write("".join(f"FIVEG_FAULT_{k.upper()}={v}\n" for k, v in params.items()))
+    with step("remove any previous stack"):
+        dc("down", "--remove-orphans", check=False)
+        (HERE / "captures" / "gnb.pcap").unlink(missing_ok=True)
+    env_lines = [f"FIVEG_FAULT_{k.upper()}={v}" for k, v in params.items()]
+    if env_lines:
+        log(f"  core env: {' '.join(env_lines)}")
+    with step("start mongo -> core -> gNB -> UE, each waiting for the previous one's health check"), \
+            tempfile.NamedTemporaryFile("w", suffix=".env") as env_file:
+        env_file.write("".join(f"{line}\n" for line in env_lines))
         env_file.flush()
         dc("up", "-d", "--wait", env={"CORE_TAG": tag, "FAULT_ENV_FILE": env_file.name})
-    for _ in range(30):
-        if "inet " in dc("exec", "-T", "ue", "ip", "-4", "addr", "show", "uesimtun0", check=False):
-            return
-        time.sleep(1)
-    raise RuntimeError("UE never got a PDU session (uesimtun0 has no address)")
+    with step("wait for the UE to register and get a PDU session (uesimtun0 up)"):
+        for _ in range(30):
+            if "inet " in dc("exec", "-T", "ue", "ip", "-4", "addr", "show", "uesimtun0", check=False):
+                return
+            time.sleep(1)
+        raise RuntimeError("UE never got a PDU session (uesimtun0 has no address)")
 
 
 def ping(service: str, *args: str) -> bool:
@@ -98,9 +126,14 @@ def paging_cycle() -> bool:
 
 
 def run_workload(workload: dict) -> None:
-    log(f"  uplink ping over PDU session: {'ok' if ping('ue', '-I', 'uesimtun0', '-c', '2', DN_GW) else 'FAILED'}")
-    for i in range(1, workload.get("paging_cycles", 0) + 1):
-        log(f"  paging cycle {i}: {'ok' if paging_cycle() else 'FAILED'}")
+    with step("uplink ping UE -> data network over the PDU session"):
+        ok = ping("ue", "-I", "uesimtun0", "-c", "2", DN_GW)
+    log(f"    {'ok' if ok else 'FAILED'}")
+    cycles = workload.get("paging_cycles", 0)
+    for i in range(1, cycles + 1):
+        with step(f"paging cycle {i}/{cycles}: gNB releases UE to idle, core pings it, AMF pages, UE wakes"):
+            ok = paging_cycle()
+        log(f"    {'ok' if ok else 'FAILED'}")
     time.sleep(1)
 
 
@@ -171,27 +204,37 @@ def main() -> None:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
     log(f"== scenario {scenario['id']}: fault {name or 'none'} {params or ''}")
+    log("\n== setup")
     tag = build_core(name)
     try:
         status = run(args, scenario, tag, name, params, violated, truth, stamp)
     finally:
-        if not args.keep_up:
-            dc("down", check=False)
+        log("\n== teardown")
+        if args.keep_up:
+            log(f"  --keep-up: stack and fiveg-sim/open5gs:{tag} left in place")
+        else:
+            with step("stop and remove the stack"):
+                dc("down", check=False)
             if name:  # the stock image stays: it is every faulted image's base
-                subprocess.run(["docker", "image", "rm", f"fiveg-sim/open5gs:{tag}"],
-                               capture_output=True)
+                with step(f"remove image fiveg-sim/open5gs:{tag}"):
+                    subprocess.run(["docker", "image", "rm", f"fiveg-sim/open5gs:{tag}"],
+                                   capture_output=True)
     sys.exit(EXIT_CODES[status])
 
 
 def run(args, scenario: dict, tag: str, name: str | None, params: dict,
         violated: list[str], truth: dict, stamp: str) -> str:
     start(tag, params)
+    log("\n== workload")
     run_workload(scenario.get("workload", {}))
     # Each fault patch logs "[FAULT] <name>" where it misbehaves, so this shows the workload
     # drove the core through the faulted code path.
     core_log = dc("logs", "core", "--no-log-prefix", "--no-color")
-    if name and f"[FAULT] {name}" not in core_log:
-        sys.exit(f"fault {name} never reached: the workload missed the patched code path")
+    if name:
+        if f"[FAULT] {name}" not in core_log:
+            sys.exit(f"fault {name} never reached: the workload missed the patched code path")
+        hits = core_log.count(f"[FAULT] {name}")
+        log(f"  core log: [FAULT] {name} x{hits} (the patched code ran)")
 
     out_dir = HERE / "runs" / f"{stamp}-{scenario['id']}"
     out_dir.mkdir(parents=True)

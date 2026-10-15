@@ -125,7 +125,7 @@ def test_build_core_applies_one_patch_or_none(monkeypatch):
                         lambda cmd, **kw: seen.append(cmd) or subprocess.CompletedProcess(cmd, 0, "", ""))
     assert run_scenario.build_core(None) == "stock"
     assert run_scenario.build_core("amf.x") == "amf.x"
-    stock, faulted = seen
+    stock, faulted = [cmd for cmd in seen if cmd[1] == "build"]
     assert "stock" in stock and not any(a.startswith("FAULT=") for a in stock)
     assert ["--target", "faulted", "--build-arg", "FAULT=amf.x"] == faulted[4:8]
     assert faulted[faulted.index("-t") + 1] == "fiveg-sim/open5gs:amf.x"
